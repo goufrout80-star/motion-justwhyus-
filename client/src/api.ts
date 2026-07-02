@@ -31,11 +31,22 @@ export async function generate(prompt: string, image: File | null): Promise<Gene
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  const data = await res.json();
 
-  if (!res.ok) {
-    throw new Error(data?.error || 'Generation failed');
+  // The server may (rarely) return non-JSON — e.g. a platform-level crash page.
+  // Read as text first and parse defensively so we surface a useful message.
+  const text = await res.text();
+  let data: { results?: GenerationResult[]; error?: unknown; message?: string } | null = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    throw new Error(text.slice(0, 500) || 'Unexpected server response');
   }
 
-  return data.results as GenerationResult[];
+  if (!res.ok) {
+    const message =
+      data?.message || (typeof data?.error === 'string' ? data.error : null) || text.slice(0, 500);
+    throw new Error(message || 'Generation failed');
+  }
+
+  return (data?.results ?? []) as GenerationResult[];
 }

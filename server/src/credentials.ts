@@ -3,13 +3,17 @@ import path from 'node:path';
 import os from 'node:os';
 
 /**
- * Resolves Google Cloud credentials across environments.
+ * Resolves Google Cloud credentials for the classic key-file / ADC paths.
  *
  * - Local dev: uses gcloud Application Default Credentials
  *   (`gcloud auth application-default login`). Nothing to do here.
- * - Vercel / serverless: there is no gcloud and no persistent filesystem,
- *   so paste the full service-account JSON into the GOOGLE_CREDENTIALS_JSON
- *   env var. We write it to a temp file and point ADC at it.
+ * - Optional backward-compat: if GOOGLE_CREDENTIALS_JSON is provided (a full
+ *   service-account JSON), it is written to a temp file and used as ADC.
+ *
+ * NOTE: On Vercel we do NOT use a JSON key (org policy blocks key creation).
+ * Keyless auth via Vercel OIDC + Workload Identity Federation is handled in
+ * google-auth.ts instead. This function is a no-op when only WIF env vars are
+ * set.
  */
 export function resolveCredentials(): void {
   const inlineJson = process.env.GOOGLE_CREDENTIALS_JSON;

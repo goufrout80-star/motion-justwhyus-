@@ -72,20 +72,28 @@ git push -u origin main
 1. On [vercel.com](https://vercel.com), **Add New → Project** and import the repo.
 2. Vercel reads [`vercel.json`](vercel.json) automatically (build command, output
    directory, and the `api/` function are all configured).
-3. Add **Environment Variables** (Settings → Environment Variables):
+3. Add **Environment Variables** (Settings → Environment Variables). This app
+   authenticates to Vertex AI **keylessly** using Vercel OIDC + Google Workload
+   Identity Federation — **no service-account JSON key** is used (many orgs block
+   key creation via `iam.disableServiceAccountKeyCreation`).
 
-   | Variable                  | Value                                                        |
-   | ------------------------- | ----------------------------------------------------------- |
-   | `GOOGLE_CLOUD_PROJECT`    | your GCP project id                                          |
-   | `GOOGLE_CLOUD_LOCATION`   | `global`                                                    |
-   | `GEMINI_MODEL`            | `gemini-omni-flash-preview`                                 |
-   | `GOOGLE_CREDENTIALS_JSON` | **paste the entire service-account JSON** (one line)        |
-   | `CLIENT_ORIGIN`           | `https://motion.justwhyus.com`                              |
+   | Variable                                | Value                                                        |
+   | --------------------------------------- | ----------------------------------------------------------- |
+   | `GOOGLE_CLOUD_PROJECT`                  | `project-b9b29161-6ab2-4096-b54`                            |
+   | `GOOGLE_CLOUD_LOCATION`                 | `global`                                                    |
+   | `GEMINI_MODEL`                          | `gemini-omni-flash-preview`                                 |
+   | `GCP_PROJECT_NUMBER`                    | `921358658147`                                             |
+   | `GCP_SERVICE_ACCOUNT_EMAIL`             | `vercel-vertex@project-b9b29161-6ab2-4096-b54.iam.gserviceaccount.com` |
+   | `GCP_WORKLOAD_IDENTITY_POOL_ID`         | `vercel`                                                   |
+   | `GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID`| `vercel`                                                   |
+   | `CLIENT_ORIGIN`                         | `https://motion.justwhyus.com`                             |
 
-   > Vercel has no `gcloud`, so it can't use ADC. Create a service account with
-   > the **Vertex AI User** role, download its JSON key, and paste the full
-   > contents into `GOOGLE_CREDENTIALS_JSON`. The server writes it to a temp file
-   > at cold start (see [`server/src/credentials.ts`](server/src/credentials.ts)).
+   > **Enable Vercel OIDC** for the project: Settings → Security → OIDC → turn it
+   > on (team-scoped issuer). The auth helper
+   > [`server/src/google-auth.ts`](server/src/google-auth.ts) exchanges the
+   > per-request Vercel OIDC token for short-lived Google credentials via WIF and
+   > impersonates the `GCP_SERVICE_ACCOUNT_EMAIL` service account (which holds
+   > `roles/aiplatform.user`).
 
 4. **Deploy.** Then add your domain `motion.justwhyus.com` under Settings → Domains.
 
