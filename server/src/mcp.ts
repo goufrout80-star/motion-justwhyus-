@@ -1,8 +1,64 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import type { ContentBlock } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import type { Request, Response } from 'express';
-import { generateFromPrompt } from './gemini.js';
+import { randomUUID } from 'node:crypto';
+import { generateFromPrompt, type GeneratedAsset } from './gemini.js';
+
+const VIDEO_MIME_TYPE = 'video/mp4';
+
+/**
+ * Converts our internal generation output into MCP content blocks. Exported
+ * as a pure function so the exact video/image/text framing can be unit
+ * tested without spending Vertex AI quota.
+ */
+export function assetsToContent(assets: GeneratedAsset[]): ContentBlock[] {
+  const content: ContentBlock[] = [];
+
+  for (const asset of assets) {
+    if (asset.type === 'video') {
+      if (asset.uri) {
+        // Delivered to Cloud Storage: point at it directly instead of
+        // inlining bytes.
+        content.push({
+          type: 'resource_link',
+          uri: asset.uri,
+          name: 'generated-video.mp4',
+          mimeType: asset.mimeType || VIDEO_MIME_TYPE,
+        });
+      } else if (asset.base64Data) {
+        // Inline bytes: embed as a proper binary resource (blob + mimeType)
+        // so MCP clients render it as a video attachment instead of
+        // dumping the base64 string as chat text.
+        content.push({
+          type: 'resource',
+          resource: {
+            uri: `generated://video/${randomUUID()}.mp4`,
+            mimeType: asset.mimeType || VIDEO_MIME_TYPE,
+            blob: asset.base64Data,
+          },
+        });
+      }
+    } else if (asset.type === 'image' && asset.base64Data) {
+      // Images have a first-class MCP content type — use it rather than a
+      // text data URL.
+      content.push({
+        type: 'image',
+        data: asset.base64Data,
+        mimeType: asset.mimeType || 'image/png',
+      });
+    } else if (asset.type === 'text' && asset.text) {
+      content.push({ type: 'text', text: asset.text });
+    }
+  }
+
+  if (content.length === 0) {
+    content.push({ type: 'text', text: 'No output was returned by the model.' });
+  }
+
+  return content;
+}
 
 /**
  * Builds a fresh MCP server exposing our video-generation capability as a
@@ -20,41 +76,16 @@ function buildServer(): McpServer {
     {
       title: 'Generate a video',
       description:
-        'Generate a video from a text prompt using Google Gemini Omni on Vertex AI. ' +
-        'Returns the generated video as a data URL (or a Cloud Storage URI when available).',
+        'Generate an MP4 video from a text prompt using Google Gemini Omni on Vertex AI. ' +
+        'Returns the video as a proper MCP media attachment (an embedded video/mp4 resource, ' +
+        'or a resource_link if it was delivered to Cloud Storage) — never as raw text.',
       inputSchema: {
         prompt: z.string().describe('A description of the video to create.'),
       },
     },
     async ({ prompt }) => {
       const assets = await generateFromPrompt({ prompt });
-
-      const content: Array<{ type: 'text'; text: string }> = [];
-      for (const asset of assets) {
-        if (asset.type === 'text' && asset.text) {
-          content.push({ type: 'text', text: asset.text });
-        } else if (asset.type === 'video') {
-          if (asset.uri) {
-            content.push({ type: 'text', text: `Video available at: ${asset.uri}` });
-          } else if (asset.base64Data) {
-            content.push({
-              type: 'text',
-              text: `data:${asset.mimeType || 'video/mp4'};base64,${asset.base64Data}`,
-            });
-          }
-        } else if (asset.type === 'image' && asset.base64Data) {
-          content.push({
-            type: 'text',
-            text: `data:${asset.mimeType || 'image/png'};base64,${asset.base64Data}`,
-          });
-        }
-      }
-
-      if (content.length === 0) {
-        content.push({ type: 'text', text: 'No output was returned by the model.' });
-      }
-
-      return { content };
+      return { content: assetsToContent(assets) };
     }
   );
 
