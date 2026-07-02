@@ -1,0 +1,11 @@
+node_modules
+dist
+.env
+.env.local
+service-account.json
+.vercel
+client/dist
+server/dist
+*.log
+*.tsbuildinfo
+.DS_Store

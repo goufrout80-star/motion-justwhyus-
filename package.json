@@ -1,0 +1,20 @@
+{
+  "name": "omni-studio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI video generation with Gemini Omni (Vertex AI)",
+  "scripts": {
+    "install:all": "npm install --prefix server && npm install --prefix client",
+    "dev": "concurrently -n server,client -c magenta,cyan \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+    "build": "npm run build --prefix client && npm run build --prefix server",
+    "vercel-build": "npm run build --prefix server && npm run build --prefix client",
+    "start": "node server/dist/index.js"
+  },
+  "dependencies": {
+    "@google/genai": "^2.0.0"
+  },
+  "devDependencies": {
+    "@vercel/node": "^5.0.0",
+    "concurrently": "^9.1.2"
+  }
+}
