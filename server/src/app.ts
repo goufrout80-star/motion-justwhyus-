@@ -1,6 +1,7 @@
 import express, { type NextFunction, type Request, type Response } from 'express';
 import cors from 'cors';
 import { generateRouter } from './routes/generate.js';
+import { videosRouter } from './routes/videos.js';
 import { handleMcpRequest } from './mcp.js';
 
 export const app = express();
@@ -16,6 +17,11 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.use('/api/generate', generateRouter);
+
+// Hosted video links returned by the MCP tool and the web app, e.g.
+// https://motion.justwhyus.com/videos/<id> — redirects to the underlying
+// Vercel Blob storage URL.
+app.use('/videos', videosRouter);
 
 // Remote MCP endpoint — connect from ChatGPT, Claude Desktop, or any MCP client.
 app.all('/api/mcp', handleMcpRequest);

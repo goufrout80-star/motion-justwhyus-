@@ -8,5 +8,8 @@
       "maxDuration": 300
     }
   },
-  "rewrites": [{ "source": "/api/(.*)", "destination": "/api/index" }]
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index" },
+    { "source": "/videos/(.*)", "destination": "/api/index" }
+  ]
 }

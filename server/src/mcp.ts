@@ -5,56 +5,82 @@ import { z } from 'zod';
 import type { Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
 import { generateFromPrompt, type GeneratedAsset } from './gemini.js';
+import { isVideoHostingConfigured, storeVideo } from './videoStore.js';
 
 const VIDEO_MIME_TYPE = 'video/mp4';
 
+type HostVideo = (base64Data: string, mimeType: string) => Promise<{ id: string; url: string }>;
+
 /**
- * Converts our internal generation output into MCP content blocks. Exported
- * as a pure function so the exact video/image/text framing can be unit
- * tested without spending Vertex AI quota.
+ * Converts our internal generation output into MCP content blocks.
+ *
+ * This tool's whole contract with clients (ChatGPT, Claude, etc.) is
+ * "you call this, you get a video back" — nothing else. So this
+ * intentionally only ever emits video content blocks and drops any stray
+ * image/text the model may have also produced, instead of returning a
+ * mixed bag that would make the client unsure what it's getting. If no
+ * video came back at all, that's an explicit failure, not a silent
+ * fallback to text/image.
+ *
+ * Inline video bytes are uploaded to Vercel Blob and returned as a
+ * resource_link under our own domain (https://motion.justwhyus.com/videos/<id>)
+ * instead of embedding megabytes of base64 in the response — real MCP
+ * clients handle a plain URL far more reliably than a large inline blob. If
+ * no Blob store is configured yet (e.g. local dev), it falls back to
+ * embedding the bytes directly so the tool still works end to end.
+ *
+ * `hostVideo` is injectable so the exact framing can be unit tested without
+ * hitting Vercel Blob or spending Vertex AI quota.
  */
-export function assetsToContent(assets: GeneratedAsset[]): ContentBlock[] {
+export async function assetsToContent(
+  assets: GeneratedAsset[],
+  hostVideo: HostVideo = storeVideo
+): Promise<ContentBlock[]> {
   const content: ContentBlock[] = [];
 
   for (const asset of assets) {
-    if (asset.type === 'video') {
-      if (asset.uri) {
-        // Delivered to Cloud Storage: point at it directly instead of
-        // inlining bytes.
-        content.push({
-          type: 'resource_link',
-          uri: asset.uri,
-          name: 'generated-video.mp4',
-          mimeType: asset.mimeType || VIDEO_MIME_TYPE,
-        });
-      } else if (asset.base64Data) {
-        // Inline bytes: embed as a proper binary resource (blob + mimeType)
-        // so MCP clients render it as a video attachment instead of
-        // dumping the base64 string as chat text.
-        content.push({
-          type: 'resource',
-          resource: {
-            uri: `generated://video/${randomUUID()}.mp4`,
-            mimeType: asset.mimeType || VIDEO_MIME_TYPE,
-            blob: asset.base64Data,
-          },
-        });
-      }
-    } else if (asset.type === 'image' && asset.base64Data) {
-      // Images have a first-class MCP content type — use it rather than a
-      // text data URL.
+    if (asset.type !== 'video') continue;
+
+    if (asset.uri) {
+      // Delivered to Cloud Storage by Vertex directly: point at it as-is.
       content.push({
-        type: 'image',
-        data: asset.base64Data,
-        mimeType: asset.mimeType || 'image/png',
+        type: 'resource_link',
+        uri: asset.uri,
+        name: 'generated-video.mp4',
+        mimeType: asset.mimeType || VIDEO_MIME_TYPE,
       });
-    } else if (asset.type === 'text' && asset.text) {
-      content.push({ type: 'text', text: asset.text });
+      continue;
+    }
+
+    if (!asset.base64Data) continue;
+
+    if (isVideoHostingConfigured()) {
+      const { url } = await hostVideo(asset.base64Data, asset.mimeType || VIDEO_MIME_TYPE);
+      content.push({
+        type: 'resource_link',
+        uri: url,
+        name: 'generated-video.mp4',
+        mimeType: asset.mimeType || VIDEO_MIME_TYPE,
+      });
+    } else {
+      // No Blob store attached yet — embed the bytes directly as a proper
+      // binary resource instead of failing the call.
+      content.push({
+        type: 'resource',
+        resource: {
+          uri: `generated://video/${randomUUID()}.mp4`,
+          mimeType: asset.mimeType || VIDEO_MIME_TYPE,
+          blob: asset.base64Data,
+        },
+      });
     }
   }
 
   if (content.length === 0) {
-    content.push({ type: 'text', text: 'No output was returned by the model.' });
+    content.push({
+      type: 'text',
+      text: 'Video generation failed: the model did not return a video for this prompt. Try rephrasing the prompt and calling generate_video again.',
+    });
   }
 
   return content;
@@ -74,18 +100,28 @@ function buildServer(): McpServer {
   server.registerTool(
     'generate_video',
     {
-      title: 'Generate a video',
+      title: 'Generate Video (MP4 only)',
       description:
-        'Generate an MP4 video from a text prompt using Google Gemini Omni on Vertex AI. ' +
-        'Returns the video as a proper MCP media attachment (an embedded video/mp4 resource, ' +
-        'or a resource_link if it was delivered to Cloud Storage) — never as raw text.',
+        'Generates and returns ONE MP4 video from a text prompt, using Google Gemini Omni on ' +
+        'Vertex AI. This tool ONLY produces video — it never returns an image and never returns ' +
+        'plain text as the result. Every successful call returns exactly one video, delivered as ' +
+        'a resource_link (a real https://motion.justwhyus.com/videos/<id> URL you can open or ' +
+        'share directly) — never as a raw text/base64 blob. Use this tool whenever the user asks ' +
+        'to create, generate, animate, or render a video; do not use it to generate still images.',
       inputSchema: {
         prompt: z.string().describe('A description of the video to create.'),
+      },
+      annotations: {
+        title: 'Generate Video (MP4 only)',
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: true,
       },
     },
     async ({ prompt }) => {
       const assets = await generateFromPrompt({ prompt });
-      return { content: assetsToContent(assets) };
+      return { content: await assetsToContent(assets) };
     }
   );
 

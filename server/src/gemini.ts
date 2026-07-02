@@ -67,6 +67,13 @@ export async function generateFromPrompt(params: {
 
   const interaction = await getClient().interactions.create({
     model,
+    // This app only generates video. Constrain the model's output modality
+    // (supported by the API) and reinforce it via system instruction, so
+    // the model doesn't return a text-only or image-only reply instead.
+    response_modalities: ['video'],
+    system_instruction:
+      'You always generate and return a video for every request. Never respond with only ' +
+      'text or only an image — the output must always be a video.',
     input: [
       {
         type: 'user_input',

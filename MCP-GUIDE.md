@@ -20,7 +20,11 @@ works both on the local Express server and on Vercel.
 
 | Tool             | Input             | What it does                                          |
 | ---------------- | ----------------- | ----------------------------------------------------- |
-| `generate_video` | `prompt` (string) | Generates a video with Gemini Omni on Vertex AI and returns it as a data URL (or a Cloud Storage URI when available). |
+| `generate_video` | `prompt` (string) | Generates a video with Gemini Omni on Vertex AI. Returns it as a real link — `https://motion.justwhyus.com/videos/<id>` — that opens or downloads the MP4 directly. This tool only ever returns video; it never returns an image or plain text as the result. |
+
+The returned link is hosted under this site's own domain (backed by Vercel
+Blob storage), not a raw base64 blob — so it's small, shareable, and works
+the same whether you open it in a browser or hand it to another tool.
 
 ---
 

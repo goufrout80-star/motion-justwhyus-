@@ -87,6 +87,7 @@ git push -u origin main
    | `GCP_WORKLOAD_IDENTITY_POOL_ID`         | `vercel`                                                   |
    | `GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID`| `vercel`                                                   |
    | `CLIENT_ORIGIN`                         | `https://motion.justwhyus.com`                             |
+   | `PUBLIC_BASE_URL`                       | `https://motion.justwhyus.com`                             |
 
    > **Enable Vercel OIDC** for the project: Settings → Security → OIDC → turn it
    > on (team-scoped issuer). The auth helper
@@ -94,6 +95,13 @@ git push -u origin main
    > per-request Vercel OIDC token for short-lived Google credentials via WIF and
    > impersonates the `GCP_SERVICE_ACCOUNT_EMAIL` service account (which holds
    > `roles/aiplatform.user`).
+
+3b. **Attach a Blob store** so generated videos get a real hosted link
+   (`https://motion.justwhyus.com/videos/<id>`) instead of being inlined as
+   base64: Project → **Storage → Create Database → Blob** → connect it to this
+   project. This auto-injects a `BLOB_READ_WRITE_TOKEN` env var — no manual
+   setup needed. Without it, the MCP tool still works but falls back to
+   embedding the video bytes directly in the response.
 
 4. **Deploy.** Then add your domain `motion.justwhyus.com` under Settings → Domains.
 
