@@ -1,6 +1,6 @@
-# Connecting Omni Studio via MCP
+# Connecting Nanoni via MCP
 
-Omni Studio doubles as a **remote MCP (Model Context Protocol) server**. Once
+Nanoni doubles as a **remote MCP (Model Context Protocol) server**. Once
 connected, an AI assistant like **ChatGPT** or **Claude** can call your site's
 `generate_video` tool and create videos on demand — the same way you'd connect a
 Gmail or Google Drive connector.
@@ -36,12 +36,12 @@ ChatGPT supports custom remote MCP connectors through **Developer mode**.
 2. Enable **Developer mode** (Settings → Connectors → Advanced → Developer mode).
 3. Click **Create / Add custom connector**.
 4. Fill in:
-   - **Name:** `Omni Studio`
+   - **Name:** `Nanoni`
    - **MCP Server URL:** `https://motion.justwhyus.com/api/mcp`
    - **Authentication:** **No authentication** ⚠️ *(this is required right now — see below)*
 5. Save. ChatGPT will connect and discover the `generate_video` tool.
 6. In a chat, enable the connector, then ask:
-   > "Use Omni Studio to generate a video of a neon city at night."
+   > "Use Nanoni to generate a video of a neon city at night."
 
 ChatGPT calls `generate_video`, and the returned video data URL / link comes
 back in the conversation.
@@ -65,7 +65,7 @@ back in the conversation.
 
 1. Go to **Settings → Connectors**.
 2. Click **Add custom connector**.
-3. **Name:** `Omni Studio` — **URL:** `https://motion.justwhyus.com/api/mcp`
+3. **Name:** `Nanoni` — **URL:** `https://motion.justwhyus.com/api/mcp`
 4. Save, then enable it in a conversation and ask Claude to generate a video.
 
 ---
@@ -78,7 +78,7 @@ remote server over HTTP:
 ```json
 {
   "mcpServers": {
-    "omni-studio": {
+    "nanoni": {
       "type": "http",
       "url": "https://motion.justwhyus.com/api/mcp"
     }

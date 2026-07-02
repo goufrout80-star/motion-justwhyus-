@@ -22,7 +22,7 @@ export function McpConnect() {
         <h2>Connect from ChatGPT &amp; Claude</h2>
       </div>
       <p className="mcp-sub">
-        Omni Studio is also a <strong>Model Context Protocol</strong> server. Add this URL as a
+        Nanoni is also a <strong>Model Context Protocol</strong> server. Add this URL as a
         connector and generate videos straight from your AI assistant.
       </p>
 

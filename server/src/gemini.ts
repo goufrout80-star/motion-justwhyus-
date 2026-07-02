@@ -49,10 +49,18 @@ export interface GeneratedAsset {
   uri?: string;
 }
 
+/** Video generation task/mode. 'auto' lets the model decide from the prompt. */
+export type VideoMode = 'auto' | 'text_to_video' | 'image_to_video' | 'reference_to_video' | 'edit';
+
+/** Duration in whole seconds (3-10), or 'auto' to let the model decide. */
+export type VideoDuration = 'auto' | number;
+
 export async function generateFromPrompt(params: {
   prompt: string;
   imageBase64?: string;
   imageMimeType?: string;
+  mode?: VideoMode;
+  duration?: VideoDuration;
 }): Promise<GeneratedAsset[]> {
   const content: Interactions.Content[] = [{ type: 'text', text: params.prompt }];
 
@@ -65,6 +73,12 @@ export async function generateFromPrompt(params: {
     });
   }
 
+  const mode = params.mode && params.mode !== 'auto' ? params.mode : undefined;
+  const duration =
+    typeof params.duration === 'number' && params.duration >= 3 && params.duration <= 10
+      ? params.duration
+      : undefined;
+
   const interaction = await getClient().interactions.create({
     model,
     // This app only generates video. Constrain the model's output modality
@@ -74,6 +88,23 @@ export async function generateFromPrompt(params: {
     system_instruction:
       'You always generate and return a video for every request. Never respond with only ' +
       'text or only an image — the output must always be a video.',
+    ...(mode
+      ? {
+          generation_config: {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            video_config: { task: mode } as any,
+          },
+        }
+      : {}),
+    ...(duration
+      ? {
+          response_format: {
+            type: 'video',
+            duration: `${duration}s`,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          } as any,
+        }
+      : {}),
     input: [
       {
         type: 'user_input',

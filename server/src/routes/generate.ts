@@ -1,7 +1,9 @@
 import { Router } from 'express';
-import { generateFromPrompt } from '../gemini.js';
+import { generateFromPrompt, type VideoDuration, type VideoMode } from '../gemini.js';
 
 export const generateRouter = Router();
+
+const VALID_MODES: VideoMode[] = ['auto', 'text_to_video', 'image_to_video', 'reference_to_video', 'edit'];
 
 generateRouter.post('/', async (req, res) => {
   try {
@@ -13,7 +15,20 @@ generateRouter.post('/', async (req, res) => {
     const imageBase64 = req.body?.imageBase64 as string | undefined;
     const imageMimeType = req.body?.imageMimeType as string | undefined;
 
-    const assets = await generateFromPrompt({ prompt, imageBase64, imageMimeType });
+    const rawMode = req.body?.mode as string | undefined;
+    const mode: VideoMode | undefined = VALID_MODES.includes(rawMode as VideoMode)
+      ? (rawMode as VideoMode)
+      : undefined;
+
+    const rawDuration = req.body?.duration;
+    let duration: VideoDuration | undefined;
+    if (rawDuration === 'auto') {
+      duration = 'auto';
+    } else if (typeof rawDuration === 'number') {
+      duration = rawDuration;
+    }
+
+    const assets = await generateFromPrompt({ prompt, imageBase64, imageMimeType, mode, duration });
 
     const results = assets.map((asset) => {
       if (asset.type === 'text') {

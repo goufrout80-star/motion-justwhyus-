@@ -1,7 +1,11 @@
-# Omni Studio
+# Nanoni
 
-AI video generation powered by **Gemini Omni** on **Vertex AI**, with a built-in
-**MCP server** so assistants like ChatGPT and Claude can generate videos too.
+A ChatGPT/Claude-style chat app with a built-in AI video generator. Chat with
+Gemini (with Google Search & Maps tools); ask it to make a video and it will
+always confirm with you first, then call **Omni** (Gemini Omni on Vertex AI)
+to generate it. There's also a manual "Create Video" panel with mode and
+duration controls, and a built-in **MCP server** so ChatGPT/Claude can call
+Omni directly too. Chat history is stored locally in your browser.
 
 - `client/` — Vite + React + TypeScript frontend
 - `server/` — Express + TypeScript backend (`@google/genai` → Vertex AI) + MCP endpoint
@@ -32,11 +36,27 @@ npm run install:all         # installs client and server deps
 Set your project id in `server/.env` (`GOOGLE_CLOUD_PROJECT=...`). The key-file
 line stays commented out — locally you're using gcloud ADC.
 
+### Enable chat
+
+Chat uses a separate credential from video generation: a plain **Gemini
+Developer API key** (not Vertex/OIDC). Get one from
+[Google AI Studio](https://aistudio.google.com/apikey) and add it to
+`server/.env`:
+
+```
+GEMINI_API_KEY=your-ai-studio-key
+GEMINI_CHAT_MODEL=gemini-3.5-flash   # optional, this is the default
+```
+
+Without it, the manual "Create Video" panel and the MCP server still work —
+only the chat view will show an error until a key is set.
+
 ```bash
 npm run dev                 # runs server (:8787) and client (:5173) together
 ```
 
-Open **http://localhost:5173**, type a prompt, and hit **Generate**.
+Open **http://localhost:5173** — start a new chat, or switch to "Create Video
+(Manual)" in the sidebar for the mode/duration-driven generator.
 
 ---
 
@@ -61,7 +81,7 @@ It offers a `generate_video` tool. Full step-by-step for ChatGPT / Claude is in
 ```bash
 git init
 git add .
-git commit -m "Omni Studio: video generation + MCP server"
+git commit -m "Nanoni: video generation + MCP server"
 git branch -M main
 git remote add origin https://github.com/<you>/motion.justwhyus.com.git
 git push -u origin main
@@ -88,6 +108,7 @@ git push -u origin main
    | `GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID`| `vercel`                                                   |
    | `CLIENT_ORIGIN`                         | `https://motion.justwhyus.com`                             |
    | `PUBLIC_BASE_URL`                       | `https://motion.justwhyus.com`                             |
+   | `GEMINI_API_KEY`                        | your [AI Studio](https://aistudio.google.com/apikey) key (separate from Vertex, powers chat) |
 
    > **Enable Vercel OIDC** for the project: Settings → Security → OIDC → turn it
    > on (team-scoped issuer). The auth helper

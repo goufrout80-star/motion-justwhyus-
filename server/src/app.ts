@@ -1,6 +1,7 @@
 import express, { type NextFunction, type Request, type Response } from 'express';
 import cors from 'cors';
 import { generateRouter } from './routes/generate.js';
+import { chatRouter } from './routes/chat.js';
 import { videosRouter } from './routes/videos.js';
 import { handleMcpRequest } from './mcp.js';
 
@@ -17,6 +18,9 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.use('/api/generate', generateRouter);
+
+// Conversational Gemini chat (separate Developer API key, not Vertex).
+app.use('/api/chat', chatRouter);
 
 // Hosted video links returned by the MCP tool and the web app, e.g.
 // https://motion.justwhyus.com/videos/<id> — redirects to the underlying

@@ -93,7 +93,7 @@ export async function assetsToContent(
  */
 function buildServer(): McpServer {
   const server = new McpServer({
-    name: 'omni-studio',
+    name: 'nanoni',
     version: '1.0.0',
   });
 

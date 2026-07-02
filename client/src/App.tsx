@@ -1,122 +1,84 @@
-import { useRef, useState, type FormEvent } from 'react';
-import { generate, type GenerationResult } from './api';
-import { ResultCard } from './components/ResultCard';
-import { GoogleG } from './components/GoogleG';
-import { McpConnect } from './components/McpConnect';
+import { useEffect, useState } from 'react';
+import { Sidebar } from './components/Sidebar';
+import { ChatView } from './components/ChatView';
+import { OmniManualPanel } from './components/OmniManualPanel';
+import { NanoniMark } from './components/NanoniMark';
+import { loadSessions, saveSessions } from './storage';
+import type { ChatSession } from './types';
+
+type View = 'chat' | 'create';
+
+function newSession(): ChatSession {
+  const now = Date.now();
+  return { id: crypto.randomUUID(), title: '', createdAt: now, updatedAt: now, messages: [] };
+}
 
 export default function App() {
-  const [prompt, setPrompt] = useState('');
-  const [image, setImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [results, setResults] = useState<GenerationResult[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [sessions, setSessions] = useState<ChatSession[]>(() => loadSessions());
+  const [activeChatId, setActiveChatId] = useState<string | null>(() => sessions[0]?.id ?? null);
+  const [view, setView] = useState<View>('chat');
 
-  function handleImageChange(file: File | null) {
-    setImage(file);
-    setImagePreview(file ? URL.createObjectURL(file) : null);
+  useEffect(() => {
+    saveSessions(sessions);
+  }, [sessions]);
+
+  function handleNewChat() {
+    const session = newSession();
+    setSessions((prev) => [session, ...prev]);
+    setActiveChatId(session.id);
+    setView('chat');
   }
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!prompt.trim() || loading) return;
-
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await generate(prompt, image);
-      setResults(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
-    } finally {
-      setLoading(false);
-    }
+  function handleSelectChat(id: string) {
+    setActiveChatId(id);
+    setView('chat');
   }
+
+  function handleDeleteChat(id: string) {
+    setSessions((prev) => prev.filter((s) => s.id !== id));
+    setActiveChatId((current) => (current === id ? null : current));
+  }
+
+  function updateSession(id: string, updater: (s: ChatSession) => ChatSession) {
+    setSessions((prev) =>
+      prev
+        .map((s) => (s.id === id ? updater(s) : s))
+        .sort((a, b) => b.updatedAt - a.updatedAt)
+    );
+  }
+
+  const activeSession = sessions.find((s) => s.id === activeChatId) ?? null;
 
   return (
-    <div className="page">
-      <header className="header">
-        <div className="logo">
-          <GoogleG />
-          <span>
-            Omni <span className="logo-accent">Studio</span>
-          </span>
-        </div>
-        <p className="tagline">
-          Generate video, images, and ideas with{' '}
-          <span className="gemini-mark">Gemini Omni</span> on Google Cloud
-        </p>
-      </header>
+    <div className="app-shell">
+      <Sidebar
+        sessions={sessions}
+        activeId={activeChatId}
+        view={view}
+        onNewChat={handleNewChat}
+        onSelectChat={handleSelectChat}
+        onDeleteChat={handleDeleteChat}
+        onSelectCreate={() => setView('create')}
+      />
 
-      <main className="main">
-        <form className="prompt-card" onSubmit={handleSubmit}>
-          <textarea
-            className="prompt-input"
-            placeholder="Describe the video you want to create…"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            rows={4}
+      <main className="app-main">
+        {view === 'create' ? (
+          <OmniManualPanel />
+        ) : activeSession ? (
+          <ChatView
+            session={activeSession}
+            onUpdateSession={(updater) => updateSession(activeSession.id, updater)}
           />
-
-          <div className="prompt-actions">
-            <div
-              className="upload-zone"
-              onClick={() => fileInputRef.current?.click()}
-              role="button"
-              tabIndex={0}
-            >
-              {imagePreview ? (
-                <img src={imagePreview} alt="Reference upload" className="upload-preview" />
-              ) : (
-                <span>+ Add reference image</span>
-              )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                hidden
-                onChange={(e) => handleImageChange(e.target.files?.[0] ?? null)}
-              />
-            </div>
-
-            {image && (
-              <button
-                type="button"
-                className="clear-btn"
-                onClick={() => {
-                  handleImageChange(null);
-                  if (fileInputRef.current) fileInputRef.current.value = '';
-                }}
-              >
-                Remove image
-              </button>
-            )}
-
-            <button type="submit" className="generate-btn" disabled={loading || !prompt.trim()}>
-              {loading ? 'Generating…' : 'Generate'}
+        ) : (
+          <div className="chat-empty chat-empty-standalone">
+            <NanoniMark size={44} />
+            <h2>Start a new chat</h2>
+            <p>Click “New chat” to talk with Nanoni, or switch to Create Video for manual mode.</p>
+            <button className="generate-btn" onClick={handleNewChat}>
+              New chat
             </button>
           </div>
-        </form>
-
-        {error && <div className="error-banner">{error}</div>}
-
-        {loading && (
-          <div className="loading-state">
-            <div className="spinner" />
-            <p>Rendering your video — this can take a minute…</p>
-          </div>
         )}
-
-        {results.length > 0 && (
-          <section className="results-grid">
-            {results.map((result, i) => (
-              <ResultCard key={i} result={result} />
-            ))}
-          </section>
-        )}
-
-        <McpConnect />
       </main>
     </div>
   );
