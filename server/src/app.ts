@@ -20,6 +20,28 @@ app.use('/api/generate', generateRouter);
 // Remote MCP endpoint — connect from ChatGPT, Claude Desktop, or any MCP client.
 app.all('/api/mcp', handleMcpRequest);
 
+// This server does not implement OAuth. If a client is misconfigured to use
+// OAuth (instead of "No authentication"), it will typically probe these
+// well-known discovery URLs first. Respond with a clear, explicit JSON error
+// instead of Express's default HTML 404 page, so the failure is obvious.
+const OAUTH_NOT_IMPLEMENTED = {
+  error: 'oauth_not_supported',
+  message:
+    'This MCP server does not implement OAuth yet. In your MCP client, set Authentication to "No authentication" and use the server URL directly (https://motion.justwhyus.com/api/mcp).',
+};
+app.all(
+  ['/.well-known/oauth-authorization-server', '/.well-known/oauth-protected-resource', '/.well-known/openid-configuration'],
+  (_req: Request, res: Response) => {
+    res.status(404).json(OAUTH_NOT_IMPLEMENTED);
+  }
+);
+app.all(
+  ['/api/mcp/.well-known/oauth-authorization-server', '/api/mcp/.well-known/oauth-protected-resource'],
+  (_req: Request, res: Response) => {
+    res.status(404).json(OAUTH_NOT_IMPLEMENTED);
+  }
+);
+
 // Any unknown /api/* route returns JSON, never HTML.
 app.use('/api', (_req: Request, res: Response) => {
   res.status(404).json({ error: true, message: 'Not found' });

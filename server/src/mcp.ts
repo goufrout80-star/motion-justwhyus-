@@ -65,12 +65,18 @@ function buildServer(): McpServer {
  * Express handler for the MCP endpoint. Runs in stateless mode: a new server
  * + transport is created per request, which is required for serverless
  * platforms like Vercel where there is no shared in-memory session store.
+ *
+ * This server does NOT implement OAuth (no discovery/authorization/token
+ * endpoints). Clients must connect with "No authentication". GET and POST
+ * are both handled here per the MCP Streamable HTTP spec — GET opens an SSE
+ * stream, POST carries JSON-RPC requests. Any other method gets a clear JSON
+ * 405, never an HTML error page.
  */
 export async function handleMcpRequest(req: Request, res: Response): Promise<void> {
-  if (req.method !== 'POST') {
+  if (req.method !== 'POST' && req.method !== 'GET' && req.method !== 'DELETE') {
     res.status(405).json({
       jsonrpc: '2.0',
-      error: { code: -32000, message: 'Method not allowed. Use POST for MCP.' },
+      error: { code: -32000, message: 'Method not allowed. Use GET or POST for MCP.' },
       id: null,
     });
     return;

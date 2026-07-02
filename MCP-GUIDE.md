@@ -34,13 +34,22 @@ ChatGPT supports custom remote MCP connectors through **Developer mode**.
 4. Fill in:
    - **Name:** `Omni Studio`
    - **MCP Server URL:** `https://motion.justwhyus.com/api/mcp`
-   - **Authentication:** None (unless you add auth — see below)
+   - **Authentication:** **No authentication** ⚠️ *(this is required right now — see below)*
 5. Save. ChatGPT will connect and discover the `generate_video` tool.
 6. In a chat, enable the connector, then ask:
    > "Use Omni Studio to generate a video of a neon city at night."
 
 ChatGPT calls `generate_video`, and the returned video data URL / link comes
 back in the conversation.
+
+> **Important — do not select "OAuth" in the Authentication dropdown.** This
+> server does not implement OAuth (no discovery, authorization, or token
+> endpoints) yet. Selecting OAuth in ChatGPT will make it probe
+> `/.well-known/oauth-authorization-server` and similar endpoints, which this
+> server correctly reports as unsupported — the connection will not succeed.
+> Choosing **No authentication** is the correct, working setup for now. OAuth
+> support is a planned future addition once the endpoint needs to be locked
+> down (see the section below).
 
 > Note: custom MCP connectors in ChatGPT require a plan that includes Developer
 > mode (Plus / Pro / Business). Availability changes over time — if you don't see
@@ -90,11 +99,27 @@ You should see `generate_video` in the response.
 
 ---
 
-## Adding authentication (recommended before going public)
+## Current auth status: no authentication (by design, for now)
 
-The endpoint is currently **open** — anyone with the URL can trigger generation
-(which costs Vertex AI credits). Before sharing it widely, protect it. The
-simplest option is a shared secret header checked in
-[`server/src/mcp.ts`](server/src/mcp.ts): read a `MCP_API_KEY` env var and reject
-requests whose `Authorization` header doesn't match. For production, a full
-OAuth flow is the MCP-recommended approach.
+The `/api/mcp` endpoint is currently **unauthenticated** — any client that has
+the URL can call `generate_video`, which spends Vertex AI credits. OAuth is
+**not implemented yet**: there are no
+`/.well-known/oauth-authorization-server`, `/.well-known/oauth-protected-resource`,
+authorization, or token endpoints. If a client is set to use OAuth against this
+server, those discovery requests will hit a clear `404 { "error":
+"oauth_not_supported", ... }` JSON response instead of succeeding — this is
+intentional so failures are obvious rather than silent. **Use "No
+authentication" in your MCP client until OAuth support ships.**
+
+Don't confuse this with the **Vercel OIDC + Google Workload Identity
+Federation** setup described in [README.md](README.md) — that is a completely
+separate, unrelated auth flow: it's how the *server* authenticates to *Google
+Vertex AI* to generate videos. It has nothing to do with how *MCP clients*
+(ChatGPT, Claude, etc.) authenticate to *this server*.
+
+Before sharing the MCP URL publicly, protect it. The simplest option is a
+shared secret header checked in [`server/src/mcp.ts`](server/src/mcp.ts): read
+an `MCP_API_KEY` env var and reject requests whose `Authorization` header
+doesn't match. A full OAuth authorization-server implementation (discovery +
+authorize + token endpoints) is the MCP-recommended long-term approach and is
+planned but not yet built.
