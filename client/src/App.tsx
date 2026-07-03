@@ -3,6 +3,7 @@ import { Sidebar } from './components/Sidebar';
 import { ChatView } from './components/ChatView';
 import { OmniManualPanel } from './components/OmniManualPanel';
 import { NanoniMark } from './components/NanoniMark';
+import { DemoBanner } from './components/DemoBanner';
 import { loadSessions, saveSessions } from './storage';
 import type { ChatSession } from './types';
 
@@ -41,45 +42,47 @@ export default function App() {
 
   function updateSession(id: string, updater: (s: ChatSession) => ChatSession) {
     setSessions((prev) =>
-      prev
-        .map((s) => (s.id === id ? updater(s) : s))
-        .sort((a, b) => b.updatedAt - a.updatedAt)
+      prev.map((s) => (s.id === id ? updater(s) : s)).sort((a, b) => b.updatedAt - a.updatedAt)
     );
   }
 
   const activeSession = sessions.find((s) => s.id === activeChatId) ?? null;
 
   return (
-    <div className="app-shell">
-      <Sidebar
-        sessions={sessions}
-        activeId={activeChatId}
-        view={view}
-        onNewChat={handleNewChat}
-        onSelectChat={handleSelectChat}
-        onDeleteChat={handleDeleteChat}
-        onSelectCreate={() => setView('create')}
-      />
+    <div className="app-root">
+      <DemoBanner />
 
-      <main className="app-main">
-        {view === 'create' ? (
-          <OmniManualPanel />
-        ) : activeSession ? (
-          <ChatView
-            session={activeSession}
-            onUpdateSession={(updater) => updateSession(activeSession.id, updater)}
-          />
-        ) : (
-          <div className="chat-empty chat-empty-standalone">
-            <NanoniMark size={44} />
-            <h2>Start a new chat</h2>
-            <p>Click “New chat” to talk with Nanoni, or switch to Create Video for manual mode.</p>
-            <button className="generate-btn" onClick={handleNewChat}>
-              New chat
-            </button>
-          </div>
-        )}
-      </main>
+      <div className="app-shell">
+        <Sidebar
+          sessions={sessions}
+          activeId={activeChatId}
+          view={view}
+          onNewChat={handleNewChat}
+          onSelectChat={handleSelectChat}
+          onDeleteChat={handleDeleteChat}
+          onSelectCreate={() => setView('create')}
+        />
+
+        <main className="app-main">
+          {view === 'create' ? (
+            <OmniManualPanel />
+          ) : activeSession ? (
+            <ChatView
+              session={activeSession}
+              onUpdateSession={(updater) => updateSession(activeSession.id, updater)}
+            />
+          ) : (
+            <div className="chat-empty chat-empty-standalone">
+              <NanoniMark size={44} />
+              <h2>Start a new chat</h2>
+              <p>Click “New chat” to talk with Nanoni, or switch to Create Video for manual mode.</p>
+              <button className="generate-btn" onClick={handleNewChat}>
+                New chat
+              </button>
+            </div>
+          )}
+        </main>
+      </div>
     </div>
   );
 }

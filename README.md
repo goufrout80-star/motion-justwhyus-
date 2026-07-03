@@ -36,20 +36,16 @@ npm run install:all         # installs client and server deps
 Set your project id in `server/.env` (`GOOGLE_CLOUD_PROJECT=...`). The key-file
 line stays commented out — locally you're using gcloud ADC.
 
-### Enable chat
+### Chat
 
-Chat uses a separate credential from video generation: a plain **Gemini
-Developer API key** (not Vertex/OIDC). Get one from
-[Google AI Studio](https://aistudio.google.com/apikey) and add it to
-`server/.env`:
+Chat (Gemini 3.5 Flash) runs through the same Vertex AI project and
+credentials as Omni video generation above — no separate API key. Once
+`GOOGLE_CLOUD_PROJECT` is set and you're logged in via gcloud ADC, chat works
+automatically. The model is configurable via `server/.env`:
 
 ```
-GEMINI_API_KEY=your-ai-studio-key
 GEMINI_CHAT_MODEL=gemini-3.5-flash   # optional, this is the default
 ```
-
-Without it, the manual "Create Video" panel and the MCP server still work —
-only the chat view will show an error until a key is set.
 
 ```bash
 npm run dev                 # runs server (:8787) and client (:5173) together
@@ -108,7 +104,7 @@ git push -u origin main
    | `GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID`| `vercel`                                                   |
    | `CLIENT_ORIGIN`                         | `https://motion.justwhyus.com`                             |
    | `PUBLIC_BASE_URL`                       | `https://motion.justwhyus.com`                             |
-   | `GEMINI_API_KEY`                        | your [AI Studio](https://aistudio.google.com/apikey) key (separate from Vertex, powers chat) |
+   | `GEMINI_CHAT_MODEL`                     | `gemini-3.5-flash` (optional, chat uses the same Vertex auth as Omni above) |
 
    > **Enable Vercel OIDC** for the project: Settings → Security → OIDC → turn it
    > on (team-scoped issuer). The auth helper

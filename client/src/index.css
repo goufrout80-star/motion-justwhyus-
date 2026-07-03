@@ -28,10 +28,53 @@ body {
   color: var(--text);
 }
 
+/* ---- App root: demo banner + app shell ---- */
+.app-root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.demo-banner {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: linear-gradient(90deg, rgba(124, 92, 255, 0.18), rgba(34, 211, 238, 0.18));
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+  padding: 9px 20px;
+  text-align: center;
+}
+
+.demo-banner strong {
+  color: var(--accent-2);
+}
+
+.demo-banner-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.demo-banner-close:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+}
+
 /* ---- App shell: sidebar + main ---- */
 .app-shell {
   display: flex;
-  height: 100vh;
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
 }
 

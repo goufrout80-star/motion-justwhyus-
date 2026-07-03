@@ -1,30 +1,11 @@
-import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from '@google/genai';
+import { HarmCategory, HarmBlockThreshold } from '@google/genai';
 import type { Content, GenerateContentConfig, Tool } from '@google/genai';
+import { getVertexClient } from './vertexClient.js';
 
-const apiKey = process.env.GEMINI_API_KEY;
+// Chat runs through the same Vertex AI project and auth as Omni video
+// generation (gcloud ADC locally, Vercel OIDC + Workload Identity
+// Federation in production) — no separate API key required.
 const CHAT_MODEL = process.env.GEMINI_CHAT_MODEL || 'gemini-3.5-flash';
-
-/**
- * Chat uses the Gemini Developer API (a plain API key from Google AI
- * Studio), which is a different credential and endpoint than the Vertex AI
- * client in gemini.ts used for video generation. Built lazily for the same
- * reason as the video client: a missing key should surface as a JSON error
- * on first use, not crash the whole serverless function at import time.
- */
-let client: GoogleGenAI | null = null;
-
-function getChatClient(): GoogleGenAI {
-  if (client) return client;
-
-  if (!apiKey) {
-    throw new Error(
-      'GEMINI_API_KEY is not set. Get a key from https://aistudio.google.com/apikey and add it to server/.env (or Vercel env vars) to enable chat.'
-    );
-  }
-
-  client = new GoogleGenAI({ apiKey });
-  return client;
-}
 
 export interface ChatMessage {
   role: 'user' | 'model';
@@ -97,7 +78,7 @@ export async function* streamChat(history: ChatMessage[]): AsyncGenerator<ChatSt
     ],
   };
 
-  const stream = await getChatClient().models.generateContentStream({
+  const stream = await getVertexClient().models.generateContentStream({
     model: CHAT_MODEL,
     contents: toContents(history),
     config,
