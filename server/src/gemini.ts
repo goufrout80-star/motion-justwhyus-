@@ -41,16 +41,20 @@ export async function generateFromPrompt(params: {
       ? params.duration
       : undefined;
 
+  // This app only generates video. Both `response_modalities` and
+  // `system_instruction` are documented by the SDK's types but the live
+  // Vertex "Interactions" preview endpoint for gemini-omni-flash-preview
+  // rejects either one (even a plain string matching the SDK's own example)
+  // with a bare "Request contains an invalid argument." 400 — verified
+  // directly against the API. Folding the instruction into the user content
+  // instead reliably still returns a video-only response.
+  content.unshift({
+    type: 'text',
+    text: 'Generate a video (not text, not an image) for the following request: ',
+  });
+
   const interaction = await getVertexClient().interactions.create({
     model,
-    // This app only generates video. `response_modalities` is documented by
-    // the SDK's types but the live Vertex "Interactions" preview endpoint
-    // rejects it in any form (array or string) with a bare "Request contains
-    // an invalid argument." 400 — verified directly against the API. The
-    // system instruction alone is sufficient to constrain output to video.
-    system_instruction:
-      'You always generate and return a video for every request. Never respond with only ' +
-      'text or only an image — the output must always be a video.',
     ...(mode
       ? {
           generation_config: {
