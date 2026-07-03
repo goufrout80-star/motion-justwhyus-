@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-const MCP_URL = 'https://motion.justwhyus.com/api/mcp';
+const MCP_URL = 'https://motion.nanoni.studio/api/mcp';
 
 export function McpConnect() {
   const [copied, setCopied] = useState(false);

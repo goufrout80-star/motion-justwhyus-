@@ -8,7 +8,7 @@ Gmail or Google Drive connector.
 ## Your MCP endpoint
 
 ```
-https://motion.justwhyus.com/api/mcp
+https://motion.nanoni.studio/api/mcp
 ```
 
 (For local testing: `http://localhost:8787/api/mcp`)
@@ -20,7 +20,7 @@ works both on the local Express server and on Vercel.
 
 | Tool             | Input             | What it does                                          |
 | ---------------- | ----------------- | ----------------------------------------------------- |
-| `generate_video` | `prompt` (string) | Generates a video with Gemini Omni on Vertex AI. Returns it as a real link — `https://motion.justwhyus.com/videos/<id>` — that opens or downloads the MP4 directly. This tool only ever returns video; it never returns an image or plain text as the result. |
+| `generate_video` | `prompt` (string) | Generates a video with Gemini Omni on Vertex AI. Returns it as a real link — `https://motion.nanoni.studio/videos/<id>` — that opens or downloads the MP4 directly. This tool only ever returns video; it never returns an image or plain text as the result. |
 
 The returned link is hosted under this site's own domain (backed by Vercel
 Blob storage), not a raw base64 blob — so it's small, shareable, and works
@@ -37,7 +37,7 @@ ChatGPT supports custom remote MCP connectors through **Developer mode**.
 3. Click **Create / Add custom connector**.
 4. Fill in:
    - **Name:** `Nanoni`
-   - **MCP Server URL:** `https://motion.justwhyus.com/api/mcp`
+   - **MCP Server URL:** `https://motion.nanoni.studio/api/mcp`
    - **Authentication:** **No authentication** ⚠️ *(this is required right now — see below)*
 5. Save. ChatGPT will connect and discover the `generate_video` tool.
 6. In a chat, enable the connector, then ask:
@@ -65,7 +65,7 @@ back in the conversation.
 
 1. Go to **Settings → Connectors**.
 2. Click **Add custom connector**.
-3. **Name:** `Nanoni` — **URL:** `https://motion.justwhyus.com/api/mcp`
+3. **Name:** `Nanoni` — **URL:** `https://motion.nanoni.studio/api/mcp`
 4. Save, then enable it in a conversation and ask Claude to generate a video.
 
 ---
@@ -80,7 +80,7 @@ remote server over HTTP:
   "mcpServers": {
     "nanoni": {
       "type": "http",
-      "url": "https://motion.justwhyus.com/api/mcp"
+      "url": "https://motion.nanoni.studio/api/mcp"
     }
   }
 }
@@ -93,7 +93,7 @@ remote server over HTTP:
 List the available tools with a raw JSON-RPC call:
 
 ```bash
-curl -s -X POST https://motion.justwhyus.com/api/mcp \
+curl -s -X POST https://motion.nanoni.studio/api/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'

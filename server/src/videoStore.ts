@@ -1,7 +1,7 @@
 import { put, head } from '@vercel/blob';
 import { randomUUID } from 'node:crypto';
 
-const PUBLIC_BASE_URL = (process.env.PUBLIC_BASE_URL || 'https://motion.justwhyus.com').replace(
+const PUBLIC_BASE_URL = (process.env.PUBLIC_BASE_URL || 'https://motion.nanoni.studio').replace(
   /\/+$/,
   ''
 );
@@ -27,7 +27,7 @@ export function isValidVideoId(id: string): boolean {
 
 /**
  * Uploads a generated video to Vercel Blob storage and returns a stable link
- * under our own domain (e.g. https://motion.justwhyus.com/videos/<id>)
+ * under our own domain (e.g. https://motion.nanoni.studio/videos/<id>)
  * instead of a raw *.blob.vercel-storage.com URL. The pathname is
  * deterministic (addRandomSuffix: false) so /videos/:id can resolve it back
  * via a metadata lookup without needing a separate database.

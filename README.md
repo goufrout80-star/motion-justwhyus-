@@ -61,7 +61,7 @@ Open **http://localhost:5173** — start a new chat, or switch to "Create Video
 The app exposes a remote MCP server at:
 
 ```
-https://motion.justwhyus.com/api/mcp     # production
+https://motion.nanoni.studio/api/mcp     # production
 http://localhost:8787/api/mcp            # local
 ```
 
@@ -79,7 +79,7 @@ git init
 git add .
 git commit -m "Nanoni: video generation + MCP server"
 git branch -M main
-git remote add origin https://github.com/<you>/motion.justwhyus.com.git
+git remote add origin https://github.com/<you>/motion.nanoni.studio.git
 git push -u origin main
 ```
 
@@ -102,8 +102,8 @@ git push -u origin main
    | `GCP_SERVICE_ACCOUNT_EMAIL`             | `vercel-vertex@project-b9b29161-6ab2-4096-b54.iam.gserviceaccount.com` |
    | `GCP_WORKLOAD_IDENTITY_POOL_ID`         | `vercel`                                                   |
    | `GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID`| `vercel`                                                   |
-   | `CLIENT_ORIGIN`                         | `https://motion.justwhyus.com`                             |
-   | `PUBLIC_BASE_URL`                       | `https://motion.justwhyus.com`                             |
+   | `CLIENT_ORIGIN`                         | `https://motion.nanoni.studio`                             |
+   | `PUBLIC_BASE_URL`                       | `https://motion.nanoni.studio`                             |
    | `GEMINI_CHAT_MODEL`                     | `gemini-3.5-flash` (optional, chat uses the same Vertex auth as Omni above) |
 
    > **Enable Vercel OIDC** for the project: Settings → Security → OIDC → turn it
@@ -114,13 +114,13 @@ git push -u origin main
    > `roles/aiplatform.user`).
 
 3b. **Attach a Blob store** so generated videos get a real hosted link
-   (`https://motion.justwhyus.com/videos/<id>`) instead of being inlined as
+   (`https://motion.nanoni.studio/videos/<id>`) instead of being inlined as
    base64: Project → **Storage → Create Database → Blob** → connect it to this
    project. This auto-injects a `BLOB_READ_WRITE_TOKEN` env var — no manual
    setup needed. Without it, the MCP tool still works but falls back to
    embedding the video bytes directly in the response.
 
-4. **Deploy.** Then add your domain `motion.justwhyus.com` under Settings → Domains.
+4. **Deploy.** Then add your domain `motion.nanoni.studio` under Settings → Domains.
 
 ### Note on generation time
 

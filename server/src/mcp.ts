@@ -23,7 +23,7 @@ type HostVideo = (base64Data: string, mimeType: string) => Promise<{ id: string;
  * fallback to text/image.
  *
  * Inline video bytes are uploaded to Vercel Blob and returned as a
- * resource_link under our own domain (https://motion.justwhyus.com/videos/<id>)
+ * resource_link under our own domain (https://motion.nanoni.studio/videos/<id>)
  * instead of embedding megabytes of base64 in the response — real MCP
  * clients handle a plain URL far more reliably than a large inline blob. If
  * no Blob store is configured yet (e.g. local dev), it falls back to
@@ -105,7 +105,7 @@ function buildServer(): McpServer {
         'Generates and returns ONE MP4 video from a text prompt, using Google Gemini Omni on ' +
         'Vertex AI. This tool ONLY produces video — it never returns an image and never returns ' +
         'plain text as the result. Every successful call returns exactly one video, delivered as ' +
-        'a resource_link (a real https://motion.justwhyus.com/videos/<id> URL you can open or ' +
+        'a resource_link (a real https://motion.nanoni.studio/videos/<id> URL you can open or ' +
         'share directly) — never as a raw text/base64 blob. Use this tool whenever the user asks ' +
         'to create, generate, animate, or render a video; do not use it to generate still images.',
       inputSchema: {

@@ -19,11 +19,11 @@ app.get('/api/health', (_req, res) => {
 
 app.use('/api/generate', generateRouter);
 
-// Conversational Gemini chat (separate Developer API key, not Vertex).
+// Conversational Gemini chat — same Vertex AI project/auth as Omni.
 app.use('/api/chat', chatRouter);
 
 // Hosted video links returned by the MCP tool and the web app, e.g.
-// https://motion.justwhyus.com/videos/<id> — redirects to the underlying
+// https://motion.nanoni.studio/videos/<id> — redirects to the underlying
 // Vercel Blob storage URL.
 app.use('/videos', videosRouter);
 
@@ -37,7 +37,7 @@ app.all('/api/mcp', handleMcpRequest);
 const OAUTH_NOT_IMPLEMENTED = {
   error: 'oauth_not_supported',
   message:
-    'This MCP server does not implement OAuth yet. In your MCP client, set Authentication to "No authentication" and use the server URL directly (https://motion.justwhyus.com/api/mcp).',
+    'This MCP server does not implement OAuth yet. In your MCP client, set Authentication to "No authentication" and use the server URL directly (https://motion.nanoni.studio/api/mcp).',
 };
 app.all(
   ['/.well-known/oauth-authorization-server', '/.well-known/oauth-protected-resource', '/.well-known/openid-configuration'],
