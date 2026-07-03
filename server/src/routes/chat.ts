@@ -3,10 +3,22 @@ import { streamChat, type ChatMessage } from '../chatGemini.js';
 
 export const chatRouter = Router();
 
+function hasValidAttachments(v: Record<string, unknown>): boolean {
+  if (v.attachments === undefined) return true;
+  if (!Array.isArray(v.attachments)) return false;
+  return v.attachments.every(
+    (a) =>
+      a &&
+      typeof a === 'object' &&
+      typeof (a as Record<string, unknown>).data === 'string' &&
+      typeof (a as Record<string, unknown>).mimeType === 'string'
+  );
+}
+
 function isChatMessage(value: unknown): value is ChatMessage {
   if (!value || typeof value !== 'object') return false;
   const v = value as Record<string, unknown>;
-  return (v.role === 'user' || v.role === 'model') && typeof v.text === 'string';
+  return (v.role === 'user' || v.role === 'model') && typeof v.text === 'string' && hasValidAttachments(v);
 }
 
 chatRouter.post('/', async (req, res) => {

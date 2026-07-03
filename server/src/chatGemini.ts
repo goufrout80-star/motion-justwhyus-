@@ -7,9 +7,16 @@ import { getVertexClient } from './vertexClient.js';
 // Federation in production) — no separate API key required.
 const CHAT_MODEL = process.env.GEMINI_CHAT_MODEL || 'gemini-3.5-flash';
 
+export interface ChatAttachment {
+  data: string;
+  mimeType: string;
+}
+
 export interface ChatMessage {
   role: 'user' | 'model';
   text: string;
+  /** Only expected on the newest message — see client/src/api.ts. */
+  attachments?: ChatAttachment[];
 }
 
 export const GENERATE_VIDEO_FUNCTION_NAME = 'generate_video';
@@ -42,13 +49,26 @@ const tools: Tool[] = [
 
 const SYSTEM_INSTRUCTION =
   'You are Nanoni, a helpful assistant embedded in an AI video generation studio. You can chat ' +
-  'normally, search the web, and look up places. If — and only if — the user asks you to create, ' +
-  'generate, animate, or render a video, call the generate_video function with a clear, detailed ' +
-  'prompt instead of describing the video yourself in text. Do not call generate_video for any ' +
+  'normally, search the web, and look up places. The user may attach files (images, audio, video, ' +
+  'or documents) — use them as context when relevant, e.g. describing an attached image or ' +
+  'transcribing/summarizing an attached audio or document. If — and only if — the user asks you ' +
+  'to create, generate, animate, or render a video, call the generate_video function with a ' +
+  'clear, detailed prompt instead of describing the video yourself in text; mention in the ' +
+  'prompt when an attached file should be used as reference. Do not call generate_video for any ' +
   'other kind of request.';
 
+const MAX_ATTACHMENTS_PER_MESSAGE = 4;
+
 function toContents(history: ChatMessage[]): Content[] {
-  return history.map((m) => ({ role: m.role, parts: [{ text: m.text }] }));
+  return history.map((m) => ({
+    role: m.role,
+    parts: [
+      { text: m.text },
+      ...(m.attachments ?? [])
+        .slice(0, MAX_ATTACHMENTS_PER_MESSAGE)
+        .map((a) => ({ inlineData: { data: a.data, mimeType: a.mimeType } })),
+    ],
+  }));
 }
 
 export type ChatStreamEvent =

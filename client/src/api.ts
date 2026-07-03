@@ -1,4 +1,5 @@
-import type { VideoDuration, VideoMode } from './types';
+import type { Attachment, VideoDuration, VideoMode } from './types';
+import { kindFromMimeType } from './types';
 
 export interface GenerationResult {
   type: 'text' | 'video' | 'image';
@@ -7,17 +8,37 @@ export interface GenerationResult {
   uri?: string;
 }
 
-function fileToBase64(file: File): Promise<string> {
+function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      // strip the "data:<mime>;base64," prefix
-      resolve(result.split(',')[1] ?? '');
-    };
+    reader.onload = () => resolve(reader.result as string);
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+}
+
+/** Max size per attached file — keeps the base64 payload well under the
+ * server's 25mb JSON body limit even with a few files attached at once. */
+export const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
+
+export async function fileToAttachment(file: File): Promise<Attachment> {
+  const dataUrl = await readFileAsDataUrl(file);
+  return {
+    id: crypto.randomUUID(),
+    name: file.name,
+    mimeType: file.type || 'application/octet-stream',
+    kind: kindFromMimeType(file.type || ''),
+    dataUrl,
+  };
+}
+
+function toWireAttachment(a: Attachment) {
+  return {
+    mimeType: a.mimeType,
+    kind: a.kind,
+    // strip the "data:<mime>;base64," prefix
+    data: a.dataUrl.split(',')[1] ?? '',
+  };
 }
 
 export interface GenerateOptions {
@@ -27,14 +48,13 @@ export interface GenerateOptions {
 
 export async function generate(
   prompt: string,
-  image: File | null,
+  attachments: Attachment[] = [],
   options: GenerateOptions = {}
 ): Promise<GenerationResult[]> {
   const body: Record<string, unknown> = { prompt };
 
-  if (image) {
-    body.imageBase64 = await fileToBase64(image);
-    body.imageMimeType = image.type;
+  if (attachments.length > 0) {
+    body.attachments = attachments.map(toWireAttachment);
   }
   if (options.mode) body.mode = options.mode;
   if (options.duration !== undefined) body.duration = options.duration;
@@ -73,6 +93,9 @@ export type ChatEvent =
 export interface ChatHistoryItem {
   role: 'user' | 'model';
   text: string;
+  /** Only sent for the newest message — older turns are text-only since we
+   * don't keep attachment bytes around after they've already been sent once. */
+  attachments?: Attachment[];
 }
 
 /**
@@ -81,10 +104,18 @@ export interface ChatHistoryItem {
  * arrive so the UI can render text as it's generated.
  */
 export async function* streamChat(messages: ChatHistoryItem[]): AsyncGenerator<ChatEvent> {
+  const wireMessages = messages.map((m) => ({
+    role: m.role,
+    text: m.text,
+    ...(m.attachments && m.attachments.length > 0
+      ? { attachments: m.attachments.map(toWireAttachment) }
+      : {}),
+  }));
+
   const res = await fetch('/api/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify({ messages: wireMessages }),
   });
 
   if (!res.ok || !res.body) {

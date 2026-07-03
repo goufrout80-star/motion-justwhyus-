@@ -1,9 +1,32 @@
 import { Router } from 'express';
-import { generateFromPrompt, type VideoDuration, type VideoMode } from '../gemini.js';
+import {
+  generateFromPrompt,
+  type AttachmentKind,
+  type InputAttachment,
+  type VideoDuration,
+  type VideoMode,
+} from '../gemini.js';
 
 export const generateRouter = Router();
 
 const VALID_MODES: VideoMode[] = ['auto', 'text_to_video', 'image_to_video', 'reference_to_video', 'edit'];
+const VALID_KINDS: AttachmentKind[] = ['image', 'audio', 'video', 'document'];
+const MAX_ATTACHMENTS = 6;
+
+function parseAttachments(raw: unknown): InputAttachment[] {
+  if (!Array.isArray(raw)) return [];
+  const attachments: InputAttachment[] = [];
+  for (const item of raw.slice(0, MAX_ATTACHMENTS)) {
+    if (!item || typeof item !== 'object') continue;
+    const { data, mimeType, kind } = item as Record<string, unknown>;
+    if (typeof data !== 'string' || typeof mimeType !== 'string' || !data) continue;
+    const resolvedKind: AttachmentKind = VALID_KINDS.includes(kind as AttachmentKind)
+      ? (kind as AttachmentKind)
+      : 'document';
+    attachments.push({ data, mimeType, kind: resolvedKind });
+  }
+  return attachments;
+}
 
 generateRouter.post('/', async (req, res) => {
   try {
@@ -12,8 +35,7 @@ generateRouter.post('/', async (req, res) => {
       return res.status(400).json({ error: 'A prompt is required.' });
     }
 
-    const imageBase64 = req.body?.imageBase64 as string | undefined;
-    const imageMimeType = req.body?.imageMimeType as string | undefined;
+    const attachments = parseAttachments(req.body?.attachments);
 
     const rawMode = req.body?.mode as string | undefined;
     const mode: VideoMode | undefined = VALID_MODES.includes(rawMode as VideoMode)
@@ -28,7 +50,7 @@ generateRouter.post('/', async (req, res) => {
       duration = rawDuration;
     }
 
-    const assets = await generateFromPrompt({ prompt, imageBase64, imageMimeType, mode, duration });
+    const assets = await generateFromPrompt({ prompt, attachments, mode, duration });
 
     const results = assets.map((asset) => {
       if (asset.type === 'text') {

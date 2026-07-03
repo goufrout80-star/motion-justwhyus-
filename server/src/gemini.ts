@@ -17,21 +17,28 @@ export type VideoMode = 'auto' | 'text_to_video' | 'image_to_video' | 'reference
 /** Duration in whole seconds (3-10), or 'auto' to let the model decide. */
 export type VideoDuration = 'auto' | number;
 
+export type AttachmentKind = 'image' | 'audio' | 'video' | 'document';
+
+export interface InputAttachment {
+  data: string;
+  mimeType: string;
+  kind: AttachmentKind;
+}
+
 export async function generateFromPrompt(params: {
   prompt: string;
-  imageBase64?: string;
-  imageMimeType?: string;
+  attachments?: InputAttachment[];
   mode?: VideoMode;
   duration?: VideoDuration;
 }): Promise<GeneratedAsset[]> {
   const content: Interactions.Content[] = [{ type: 'text', text: params.prompt }];
 
-  if (params.imageBase64 && params.imageMimeType) {
+  for (const attachment of params.attachments ?? []) {
     content.push({
-      type: 'image',
-      data: params.imageBase64,
+      type: attachment.kind,
+      data: attachment.data,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      mime_type: params.imageMimeType as any,
+      mime_type: attachment.mimeType as any,
     });
   }
 
@@ -48,9 +55,13 @@ export async function generateFromPrompt(params: {
   // with a bare "Request contains an invalid argument." 400 — verified
   // directly against the API. Folding the instruction into the user content
   // instead reliably still returns a video-only response.
+  const attachmentHint =
+    params.attachments && params.attachments.length > 0
+      ? ` Use the attached file(s) as reference where relevant.`
+      : '';
   content.unshift({
     type: 'text',
-    text: 'Generate a video (not text, not an image) for the following request: ',
+    text: `Generate a video (not text, not an image) for the following request:${attachmentHint}`,
   });
 
   const interaction = await getVertexClient().interactions.create({

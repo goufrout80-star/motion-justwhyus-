@@ -352,13 +352,16 @@ body {
   font-size: 13.5px;
 }
 
-.chat-input-row {
-  display: flex;
-  gap: 10px;
+.chat-composer {
   max-width: 760px;
   width: 100%;
   margin: 0 auto;
   padding: 14px 24px 24px;
+}
+
+.chat-input-row {
+  display: flex;
+  gap: 10px;
 }
 
 .chat-input-row input {
@@ -381,7 +384,7 @@ body {
   color: var(--muted);
 }
 
-.chat-input-row button {
+.chat-input-row button[type='submit'] {
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
   color: white;
   border: none;
@@ -395,6 +398,67 @@ body {
 .chat-input-row button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.chat-attach-btn {
+  flex-shrink: 0;
+  width: 46px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  font-size: 18px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.chat-attach-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.attachment-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.attachment-chips-pending {
+  margin-bottom: 10px;
+}
+
+.attachment-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 12.5px;
+  max-width: 220px;
+}
+
+.attachment-chip.removable {
+  color: var(--text);
+  padding-right: 6px;
+}
+
+.attachment-chip button {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+.attachment-chip button:hover {
+  color: var(--text);
+}
+
+.chat-bubble-content .attachment-chips {
+  margin-bottom: 8px;
 }
 
 /* ---- Confirm video modal ---- */
