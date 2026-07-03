@@ -1,4 +1,3 @@
-import { upload } from '@vercel/blob/client';
 import type { Attachment, VideoDuration, VideoMode } from './types';
 import { kindFromMimeType } from './types';
 
@@ -9,25 +8,48 @@ export interface GenerationResult {
   uri?: string;
 }
 
-/** Max size per attached file. Files upload straight to Vercel Blob from
+/** Max size per attached file. Files upload straight to Cloudinary from
  * the browser, so this is only a sanity cap — not constrained by Vercel's
  * ~4.5MB serverless function request body limit like inlining would be. */
 export const MAX_ATTACHMENT_BYTES = 50 * 1024 * 1024;
 
-/** Uploads a file directly to Vercel Blob storage (via a short-lived token
- * from /api/attachments/upload) so its bytes never pass through our own
- * serverless function as part of a JSON request body. */
+const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME as string | undefined;
+const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET as string | undefined;
+
+/**
+ * Uploads a file directly to Cloudinary from the browser using an unsigned
+ * upload preset — no token round-trip to our own server, no CORS issues
+ * (Cloudinary's upload API is designed for direct browser uploads), and no
+ * dependency on Vercel account/store configuration. The upload preset name
+ * is not a secret (it only grants upload, not read/delete/list), so it's
+ * safe to ship in the client bundle.
+ */
 export async function uploadAttachment(file: File): Promise<Attachment> {
-  const blob = await upload(file.name, file, {
-    access: 'public',
-    handleUploadUrl: '/api/attachments/upload',
+  if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+    throw new Error(
+      'Attachment uploads are not configured — set VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET.'
+    );
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`, {
+    method: 'POST',
+    body: formData,
   });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data?.error?.message || 'Upload failed');
+  }
+
   return {
     id: crypto.randomUUID(),
     name: file.name,
     mimeType: file.type || 'application/octet-stream',
     kind: kindFromMimeType(file.type || ''),
-    url: blob.url,
+    url: data.secure_url as string,
   };
 }
 

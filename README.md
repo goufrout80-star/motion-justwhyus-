@@ -105,6 +105,8 @@ git push -u origin main
    | `CLIENT_ORIGIN`                         | `https://motion.nanoni.studio`                             |
    | `PUBLIC_BASE_URL`                       | `https://motion.nanoni.studio`                             |
    | `GEMINI_CHAT_MODEL`                     | `gemini-3.5-flash` (optional, chat uses the same Vertex auth as Omni above) |
+   | `VITE_CLOUDINARY_CLOUD_NAME`             | Your Cloudinary cloud name (chat file attachments — see [`client/.env.example`](client/.env.example)) |
+   | `VITE_CLOUDINARY_UPLOAD_PRESET`          | Your Cloudinary **unsigned** upload preset name |
 
    > **Enable Vercel OIDC** for the project: Settings → Security → OIDC → turn it
    > on (team-scoped issuer). The auth helper

@@ -21,12 +21,12 @@ export type VideoDuration = 'auto' | number;
 export type AttachmentKind = 'image' | 'audio' | 'video' | 'document';
 
 export interface InputAttachment {
-  /** A Vercel Blob URL — the client uploads there directly to avoid
-   * Vercel's ~4.5MB function request body limit; the server fetches the
-   * bytes itself before building the Content part. Vertex's Interactions
-   * API only accepts gs:// URIs for the `uri` field (verified directly
-   * against the API — a public https URL is rejected outright), so we
-   * can't just pass the Blob URL straight through. */
+  /** A Cloudinary delivery URL — the client uploads there directly to
+   * avoid Vercel's ~4.5MB function request body limit; the server fetches
+   * the bytes itself before building the Content part. Vertex's
+   * Interactions API only accepts gs:// URIs for the `uri` field (verified
+   * directly against the API — a public https URL is rejected outright),
+   * so we can't just pass the Cloudinary URL straight through. */
   url: string;
   mimeType: string;
   kind: AttachmentKind;

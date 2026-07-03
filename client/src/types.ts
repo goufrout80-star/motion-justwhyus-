@@ -3,11 +3,11 @@ export type VideoDuration = 'auto' | number;
 
 export type AttachmentKind = 'image' | 'audio' | 'video' | 'document';
 
-/** A file attached in chat or the manual panel. Uploaded directly to Vercel
- * Blob storage from the browser (bypassing Vercel's ~4.5MB serverless
- * function request body limit) — `url` is a public Blob URL the server
- * fetches server-side when it needs the actual bytes. Kept in memory only;
- * never persisted to localStorage. */
+/** A file attached in chat or the manual panel. Uploaded directly to
+ * Cloudinary from the browser (bypassing Vercel's ~4.5MB serverless
+ * function request body limit) — `url` is a public Cloudinary URL the
+ * server fetches server-side when it needs the actual bytes. Kept in
+ * memory only; never persisted to localStorage. */
 export interface Attachment {
   id: string;
   name: string;

@@ -9,9 +9,9 @@ import { fetchAttachmentBase64 } from './attachmentFetch.js';
 const CHAT_MODEL = process.env.GEMINI_CHAT_MODEL || 'gemini-3.5-flash';
 
 export interface ChatAttachment {
-  /** A Vercel Blob URL — the client uploads there directly to avoid
-   * Vercel's ~4.5MB function request body limit; the server fetches the
-   * bytes itself before building the inlineData part. */
+  /** A Cloudinary delivery URL — the client uploads there directly to
+   * avoid Vercel's ~4.5MB function request body limit; the server fetches
+   * the bytes itself before building the inlineData part. */
   url: string;
   mimeType: string;
 }
