@@ -1,3 +1,4 @@
+import { upload } from '@vercel/blob/client';
 import type { Attachment, VideoDuration, VideoMode } from './types';
 import { kindFromMimeType } from './types';
 
@@ -8,37 +9,30 @@ export interface GenerationResult {
   uri?: string;
 }
 
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
+/** Max size per attached file. Files upload straight to Vercel Blob from
+ * the browser, so this is only a sanity cap — not constrained by Vercel's
+ * ~4.5MB serverless function request body limit like inlining would be. */
+export const MAX_ATTACHMENT_BYTES = 50 * 1024 * 1024;
+
+/** Uploads a file directly to Vercel Blob storage (via a short-lived token
+ * from /api/attachments/upload) so its bytes never pass through our own
+ * serverless function as part of a JSON request body. */
+export async function uploadAttachment(file: File): Promise<Attachment> {
+  const blob = await upload(file.name, file, {
+    access: 'public',
+    handleUploadUrl: '/api/attachments/upload',
   });
-}
-
-/** Max size per attached file — keeps the base64 payload well under the
- * server's 25mb JSON body limit even with a few files attached at once. */
-export const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
-
-export async function fileToAttachment(file: File): Promise<Attachment> {
-  const dataUrl = await readFileAsDataUrl(file);
   return {
     id: crypto.randomUUID(),
     name: file.name,
     mimeType: file.type || 'application/octet-stream',
     kind: kindFromMimeType(file.type || ''),
-    dataUrl,
+    url: blob.url,
   };
 }
 
 function toWireAttachment(a: Attachment) {
-  return {
-    mimeType: a.mimeType,
-    kind: a.kind,
-    // strip the "data:<mime>;base64," prefix
-    data: a.dataUrl.split(',')[1] ?? '',
-  };
+  return { url: a.url, mimeType: a.mimeType, kind: a.kind };
 }
 
 export interface GenerateOptions {

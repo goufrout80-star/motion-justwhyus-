@@ -10,7 +10,7 @@ function hasValidAttachments(v: Record<string, unknown>): boolean {
     (a) =>
       a &&
       typeof a === 'object' &&
-      typeof (a as Record<string, unknown>).data === 'string' &&
+      typeof (a as Record<string, unknown>).url === 'string' &&
       typeof (a as Record<string, unknown>).mimeType === 'string'
   );
 }

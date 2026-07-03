@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
-import { fileToAttachment, generate, streamChat, MAX_ATTACHMENT_BYTES, type ChatHistoryItem } from '../api';
+import { uploadAttachment, generate, streamChat, MAX_ATTACHMENT_BYTES, type ChatHistoryItem } from '../api';
 import type { Attachment, ChatMessage, ChatSession } from '../types';
 import { NanoniMark } from './NanoniMark';
-import { ConfirmVideoModal } from './ConfirmVideoModal';
 
 interface ChatViewProps {
   session: ChatSession;
@@ -27,14 +26,26 @@ function newId(): string {
   return crypto.randomUUID();
 }
 
+/** Vertex's safety filter rejections are generic 400s with wording that
+ * varies ("prompt is blocked due to prohibited contents", "blocked due to
+ * prohibited content guidelines", etc.) — normalize them into one clear,
+ * actionable message instead of surfacing the raw API text. */
+function friendlyVideoError(raw: string): string {
+  if (/prohibited content|blocked/i.test(raw)) {
+    return "This prompt was blocked by Google's safety filters. Try rephrasing it to avoid sensitive, violent, or restricted content, then try again.";
+  }
+  if (/quota|too_many_requests|429/i.test(raw)) {
+    return "Omni's request quota was hit. Wait a minute, then try again.";
+  }
+  return raw;
+}
+
 export function ChatView({ session, onUpdateSession }: ChatViewProps) {
   const [input, setInput] = useState('');
   const [pendingAttachments, setPendingAttachments] = useState<Attachment[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
   const [streaming, setStreaming] = useState(false);
-  const [pendingConfirm, setPendingConfirm] = useState<{ messageId: string; prompt: string } | null>(
-    null
-  );
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -73,14 +84,23 @@ export function ChatView({ session, onUpdateSession }: ChatViewProps) {
     const ok = toAdd.filter((f) => f.size <= MAX_ATTACHMENT_BYTES);
 
     if (oversized.length > 0) {
-      setAttachError(`${oversized.map((f) => f.name).join(', ')} exceeds the 8MB attachment limit.`);
+      const limitMb = Math.round(MAX_ATTACHMENT_BYTES / (1024 * 1024));
+      setAttachError(`${oversized.map((f) => f.name).join(', ')} exceeds the ${limitMb}MB attachment limit.`);
     }
     if (files.length > toAdd.length) {
       setAttachError(`Only ${MAX_ATTACHMENTS_PER_MESSAGE} files can be attached per message.`);
     }
+    if (ok.length === 0) return;
 
-    const converted = await Promise.all(ok.map(fileToAttachment));
-    setPendingAttachments((prev) => [...prev, ...converted]);
+    setUploading(true);
+    try {
+      const converted = await Promise.all(ok.map(uploadAttachment));
+      setPendingAttachments((prev) => [...prev, ...converted]);
+    } catch (err) {
+      setAttachError(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
   }
 
   function removePendingAttachment(id: string) {
@@ -135,10 +155,10 @@ export function ChatView({ session, onUpdateSession }: ChatViewProps) {
           accumulated += event.text;
           patchMessage(modelMsgId, { text: accumulated });
         } else if (event.type === 'video_request') {
-          setPendingConfirm({ messageId: modelMsgId, prompt: event.prompt });
           patchMessage(modelMsgId, {
             text: accumulated || `I can generate a video for you: "${event.prompt}"`,
             pendingVideoPrompt: event.prompt,
+            videoPrompt: event.prompt,
           });
         } else if (event.type === 'error') {
           setError(event.message);
@@ -151,39 +171,49 @@ export function ChatView({ session, onUpdateSession }: ChatViewProps) {
     }
   }
 
-  async function handleConfirm(confirmed: boolean) {
-    if (!pendingConfirm) return;
-    const { messageId, prompt } = pendingConfirm;
-    setPendingConfirm(null);
-    patchMessage(messageId, { pendingVideoPrompt: undefined });
+  function respondToConfirm(messageId: string, confirmed: boolean) {
+    const message = session.messages.find((m) => m.id === messageId);
+    if (!message?.pendingVideoPrompt) return;
 
     if (!confirmed) {
-      onUpdateSession((s) => ({
-        ...s,
-        messages: s.messages.map((m) =>
-          m.id === messageId ? { ...m, text: `${m.text}\n\n_Cancelled — video not generated._` } : m
-        ),
-      }));
+      patchMessage(messageId, {
+        pendingVideoPrompt: undefined,
+        videoPrompt: undefined,
+        text: `${message.text}\n\n_Cancelled — video not generated._`,
+      });
       return;
     }
 
-    patchMessage(messageId, { isGeneratingVideo: true });
+    patchMessage(messageId, { pendingVideoPrompt: undefined });
+    generateVideo(messageId, message.videoPrompt!);
+  }
+
+  async function generateVideo(messageId: string, prompt: string) {
+    patchMessage(messageId, { isGeneratingVideo: true, videoError: undefined });
 
     try {
       const results = await generate(prompt, sessionAttachmentsRef.current);
       const video = results.find((r) => r.type === 'video');
+      const baseText = session.messages.find((m) => m.id === messageId)?.text ?? '';
       patchMessage(messageId, {
         isGeneratingVideo: false,
         videoUrl: video?.uri || video?.dataUrl,
-        text: video ? `${session.messages.find((m) => m.id === messageId)?.text ?? ''}\n\nHere's your video:` : 'Video generation did not return a video.',
+        text: video ? `${baseText}\n\nHere's your video:` : baseText,
+        videoError: video ? undefined : 'Video generation did not return a video.',
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Video generation failed';
       patchMessage(messageId, {
         isGeneratingVideo: false,
-        text: `${session.messages.find((m) => m.id === messageId)?.text ?? ''}\n\n_Video generation failed: ${message}_`,
+        videoError: friendlyVideoError(message),
       });
     }
+  }
+
+  function retryVideo(messageId: string) {
+    const message = session.messages.find((m) => m.id === messageId);
+    if (!message?.videoPrompt) return;
+    generateVideo(messageId, message.videoPrompt);
   }
 
   return (
@@ -213,11 +243,33 @@ export function ChatView({ session, onUpdateSession }: ChatViewProps) {
                 </div>
               )}
               {m.text && <span className="chat-bubble-text">{m.text}</span>}
+
+              {m.pendingVideoPrompt && (
+                <div className="inline-confirm">
+                  <button className="inline-confirm-btn secondary" onClick={() => respondToConfirm(m.id, false)}>
+                    No, cancel
+                  </button>
+                  <button className="inline-confirm-btn primary" onClick={() => respondToConfirm(m.id, true)}>
+                    Yes, create video
+                  </button>
+                </div>
+              )}
+
               {m.isGeneratingVideo && (
                 <div className="inline-generating">
                   <span className="spinner" /> Generating your video…
                 </div>
               )}
+
+              {m.videoError && (
+                <div className="inline-video-error">
+                  <span>{m.videoError}</span>
+                  <button className="inline-confirm-btn primary" onClick={() => retryVideo(m.id)}>
+                    Try again
+                  </button>
+                </div>
+              )}
+
               {m.videoUrl && <video src={m.videoUrl} controls loop className="chat-video" />}
             </div>
           </div>
@@ -229,7 +281,7 @@ export function ChatView({ session, onUpdateSession }: ChatViewProps) {
       {attachError && <div className="chat-error">{attachError}</div>}
 
       <form className="chat-composer" onSubmit={send}>
-        {pendingAttachments.length > 0 && (
+        {(pendingAttachments.length > 0 || uploading) && (
           <div className="attachment-chips attachment-chips-pending">
             {pendingAttachments.map((a) => (
               <span key={a.id} className="attachment-chip removable">
@@ -239,6 +291,11 @@ export function ChatView({ session, onUpdateSession }: ChatViewProps) {
                 </button>
               </span>
             ))}
+            {uploading && (
+              <span className="attachment-chip">
+                <span className="spinner" /> Uploading…
+              </span>
+            )}
           </div>
         )}
 
@@ -247,7 +304,7 @@ export function ChatView({ session, onUpdateSession }: ChatViewProps) {
             type="button"
             className="chat-attach-btn"
             title="Attach files"
-            disabled={streaming}
+            disabled={streaming || uploading}
             onClick={() => fileInputRef.current?.click()}
           >
             📎
@@ -266,19 +323,14 @@ export function ChatView({ session, onUpdateSession }: ChatViewProps) {
             placeholder="Message Nanoni…"
             disabled={streaming}
           />
-          <button type="submit" disabled={streaming || (!input.trim() && pendingAttachments.length === 0)}>
+          <button
+            type="submit"
+            disabled={streaming || uploading || (!input.trim() && pendingAttachments.length === 0)}
+          >
             {streaming ? '…' : 'Send'}
           </button>
         </div>
       </form>
-
-      {pendingConfirm && (
-        <ConfirmVideoModal
-          prompt={pendingConfirm.prompt}
-          onCancel={() => handleConfirm(false)}
-          onConfirm={() => handleConfirm(true)}
-        />
-      )}
     </div>
   );
 }

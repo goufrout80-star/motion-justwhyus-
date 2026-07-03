@@ -1,5 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react';
-import { fileToAttachment, generate, type GenerationResult } from '../api';
+import { uploadAttachment, generate, type GenerationResult } from '../api';
 import type { VideoDuration, VideoMode } from '../types';
 import { ResultCard } from './ResultCard';
 import { NanoniMark } from './NanoniMark';
@@ -41,7 +41,7 @@ export function OmniManualPanel() {
     setLoading(true);
     setError(null);
     try {
-      const attachments = image ? [await fileToAttachment(image)] : [];
+      const attachments = image ? [await uploadAttachment(image)] : [];
       const data = await generate(prompt, attachments, { mode, duration });
       setResults(data);
     } catch (err) {

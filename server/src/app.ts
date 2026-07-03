@@ -3,6 +3,7 @@ import cors from 'cors';
 import { generateRouter } from './routes/generate.js';
 import { chatRouter } from './routes/chat.js';
 import { videosRouter } from './routes/videos.js';
+import { attachmentsRouter } from './routes/attachments.js';
 import { handleMcpRequest } from './mcp.js';
 
 export const app = express();
@@ -18,6 +19,9 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.use('/api/generate', generateRouter);
+
+// Issues client tokens for direct browser -> Vercel Blob attachment uploads.
+app.use('/api/attachments/upload', attachmentsRouter);
 
 // Conversational Gemini chat — same Vertex AI project/auth as Omni.
 app.use('/api/chat', chatRouter);

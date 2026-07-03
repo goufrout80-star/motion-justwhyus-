@@ -3,15 +3,17 @@ export type VideoDuration = 'auto' | number;
 
 export type AttachmentKind = 'image' | 'audio' | 'video' | 'document';
 
-/** A file attached in chat or the manual panel. `dataUrl` is kept in memory
- * only — attachments are never persisted to localStorage (base64 media can
- * easily blow the ~5-10MB quota), so they don't survive a page reload. */
+/** A file attached in chat or the manual panel. Uploaded directly to Vercel
+ * Blob storage from the browser (bypassing Vercel's ~4.5MB serverless
+ * function request body limit) — `url` is a public Blob URL the server
+ * fetches server-side when it needs the actual bytes. Kept in memory only;
+ * never persisted to localStorage. */
 export interface Attachment {
   id: string;
   name: string;
   mimeType: string;
   kind: AttachmentKind;
-  dataUrl: string;
+  url: string;
 }
 
 /** Lightweight, persisted stand-in for an Attachment — just enough to show
@@ -26,9 +28,14 @@ export interface ChatMessage {
   role: 'user' | 'model';
   text: string;
   attachments?: AttachmentMeta[];
+  /** Set while waiting on the user's yes/no — shows inline confirm buttons. */
   pendingVideoPrompt?: string;
+  /** The prompt actually used for generation — kept around (even after
+   * confirm/cancel) so a failed attempt can be retried without re-asking. */
+  videoPrompt?: string;
   isGeneratingVideo?: boolean;
   videoUrl?: string;
+  videoError?: string;
 }
 
 export interface ChatSession {

@@ -1,6 +1,7 @@
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
 import type { Content, GenerateContentConfig, Tool } from '@google/genai';
 import { getVertexClient } from './vertexClient.js';
+import { fetchAttachmentBase64 } from './attachmentFetch.js';
 
 // Chat runs through the same Vertex AI project and auth as Omni video
 // generation (gcloud ADC locally, Vercel OIDC + Workload Identity
@@ -8,7 +9,10 @@ import { getVertexClient } from './vertexClient.js';
 const CHAT_MODEL = process.env.GEMINI_CHAT_MODEL || 'gemini-3.5-flash';
 
 export interface ChatAttachment {
-  data: string;
+  /** A Vercel Blob URL — the client uploads there directly to avoid
+   * Vercel's ~4.5MB function request body limit; the server fetches the
+   * bytes itself before building the inlineData part. */
+  url: string;
   mimeType: string;
 }
 
@@ -59,16 +63,18 @@ const SYSTEM_INSTRUCTION =
 
 const MAX_ATTACHMENTS_PER_MESSAGE = 4;
 
-function toContents(history: ChatMessage[]): Content[] {
-  return history.map((m) => ({
-    role: m.role,
-    parts: [
-      { text: m.text },
-      ...(m.attachments ?? [])
-        .slice(0, MAX_ATTACHMENTS_PER_MESSAGE)
-        .map((a) => ({ inlineData: { data: a.data, mimeType: a.mimeType } })),
-    ],
-  }));
+async function toContents(history: ChatMessage[]): Promise<Content[]> {
+  return Promise.all(
+    history.map(async (m) => {
+      const attachments = (m.attachments ?? []).slice(0, MAX_ATTACHMENTS_PER_MESSAGE);
+      const inlineParts = await Promise.all(
+        attachments.map(async (a) => ({
+          inlineData: { data: await fetchAttachmentBase64(a.url), mimeType: a.mimeType },
+        }))
+      );
+      return { role: m.role, parts: [{ text: m.text }, ...inlineParts] };
+    })
+  );
 }
 
 export type ChatStreamEvent =
@@ -100,7 +106,7 @@ export async function* streamChat(history: ChatMessage[]): AsyncGenerator<ChatSt
 
   const stream = await getVertexClient().models.generateContentStream({
     model: CHAT_MODEL,
-    contents: toContents(history),
+    contents: await toContents(history),
     config,
   });
 

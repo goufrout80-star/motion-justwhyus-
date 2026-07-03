@@ -18,12 +18,12 @@ function parseAttachments(raw: unknown): InputAttachment[] {
   const attachments: InputAttachment[] = [];
   for (const item of raw.slice(0, MAX_ATTACHMENTS)) {
     if (!item || typeof item !== 'object') continue;
-    const { data, mimeType, kind } = item as Record<string, unknown>;
-    if (typeof data !== 'string' || typeof mimeType !== 'string' || !data) continue;
+    const { url, mimeType, kind } = item as Record<string, unknown>;
+    if (typeof url !== 'string' || typeof mimeType !== 'string' || !url) continue;
     const resolvedKind: AttachmentKind = VALID_KINDS.includes(kind as AttachmentKind)
       ? (kind as AttachmentKind)
       : 'document';
-    attachments.push({ data, mimeType, kind: resolvedKind });
+    attachments.push({ url, mimeType, kind: resolvedKind });
   }
   return attachments;
 }

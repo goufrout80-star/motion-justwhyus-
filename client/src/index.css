@@ -457,77 +457,56 @@ body {
   color: var(--text);
 }
 
+.attachment-chip .spinner {
+  width: 12px;
+  height: 12px;
+  border-width: 2px;
+}
+
 .chat-bubble-content .attachment-chips {
   margin-bottom: 8px;
 }
 
-/* ---- Confirm video modal ---- */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(6, 6, 10, 0.65);
-  backdrop-filter: blur(3px);
+/* ---- Inline video confirm / retry (rendered in the chat bubble itself,
+   not a popup) ---- */
+.inline-confirm {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 50;
-  padding: 20px;
-}
-
-.modal-card {
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  padding: 26px;
-  max-width: 420px;
-  width: 100%;
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
-}
-
-.modal-card h3 {
-  margin: 0 0 12px;
-  font-size: 18px;
-}
-
-.modal-prompt {
-  color: var(--text);
-  font-size: 14.5px;
-  font-style: italic;
-  line-height: 1.6;
-  margin: 0 0 12px;
-}
-
-.modal-hint {
-  color: var(--muted);
-  font-size: 13.5px;
-  line-height: 1.6;
-  margin: 0 0 22px;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
   gap: 10px;
+  margin-top: 12px;
 }
 
-.modal-btn {
+.inline-confirm-btn {
   border: none;
-  padding: 10px 18px;
+  padding: 8px 16px;
   border-radius: 10px;
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 600;
   cursor: pointer;
 }
 
-.modal-btn.secondary {
+.inline-confirm-btn.secondary {
   background: var(--surface-3);
   color: var(--text);
   border: 1px solid var(--border);
 }
 
-.modal-btn.primary {
+.inline-confirm-btn.primary {
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
   color: white;
+}
+
+.inline-video-error {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 92, 92, 0.12);
+  border: 1px solid rgba(255, 92, 92, 0.35);
+  color: #ff8b8b;
+  border-radius: 10px;
+  font-size: 13px;
 }
 
 /* ---- Manual creation panel ---- */
