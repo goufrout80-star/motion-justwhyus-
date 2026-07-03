@@ -43,10 +43,11 @@ export async function generateFromPrompt(params: {
 
   const interaction = await getVertexClient().interactions.create({
     model,
-    // This app only generates video. Constrain the model's output modality
-    // (supported by the API) and reinforce it via system instruction, so
-    // the model doesn't return a text-only or image-only reply instead.
-    response_modalities: ['video'],
+    // This app only generates video. `response_modalities` is documented by
+    // the SDK's types but the live Vertex "Interactions" preview endpoint
+    // rejects it in any form (array or string) with a bare "Request contains
+    // an invalid argument." 400 — verified directly against the API. The
+    // system instruction alone is sufficient to constrain output to video.
     system_instruction:
       'You always generate and return a video for every request. Never respond with only ' +
       'text or only an image — the output must always be a video.',
