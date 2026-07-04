@@ -41,11 +41,9 @@ line stays commented out — locally you're using gcloud ADC.
 Chat (Gemini 3.5 Flash) runs through the same Vertex AI project and
 credentials as Omni video generation above — no separate API key. Once
 `GOOGLE_CLOUD_PROJECT` is set and you're logged in via gcloud ADC, chat works
-automatically. The model is configurable via `server/.env`:
-
-```
-GEMINI_CHAT_MODEL=gemini-3.5-flash   # optional, this is the default
-```
+automatically. Model ids are hardcoded in code (`gemini-3.5-flash` for chat,
+`gemini-omni-flash-preview` for video) — intentionally not env vars, since a
+stale env value once broke generation with a 400.
 
 ```bash
 npm run dev                 # runs server (:8787) and client (:5173) together
@@ -97,16 +95,19 @@ git push -u origin main
    | --------------------------------------- | ----------------------------------------------------------- |
    | `GOOGLE_CLOUD_PROJECT`                  | `project-b9b29161-6ab2-4096-b54`                            |
    | `GOOGLE_CLOUD_LOCATION`                 | `global`                                                    |
-   | `GEMINI_MODEL`                          | `gemini-omni-flash-preview`                                 |
    | `GCP_PROJECT_NUMBER`                    | `921358658147`                                             |
    | `GCP_SERVICE_ACCOUNT_EMAIL`             | `vercel-vertex@project-b9b29161-6ab2-4096-b54.iam.gserviceaccount.com` |
    | `GCP_WORKLOAD_IDENTITY_POOL_ID`         | `vercel`                                                   |
    | `GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID`| `vercel`                                                   |
    | `CLIENT_ORIGIN`                         | `https://motion.nanoni.studio`                             |
    | `PUBLIC_BASE_URL`                       | `https://motion.nanoni.studio`                             |
-   | `GEMINI_CHAT_MODEL`                     | `gemini-3.5-flash` (optional, chat uses the same Vertex auth as Omni above) |
    | `VITE_CLOUDINARY_CLOUD_NAME`             | Your Cloudinary cloud name (chat file attachments — see [`client/.env.example`](client/.env.example)) |
    | `VITE_CLOUDINARY_UPLOAD_PRESET`          | Your Cloudinary **unsigned** upload preset name |
+
+   > **Do NOT set `GEMINI_MODEL` or `GEMINI_CHAT_MODEL` on Vercel** — if they
+   > exist there now, delete them. Model ids are hardcoded in the server; a
+   > stale env value previously caused every generation to fail with
+   > `400 Request contains an invalid argument`.
 
    > **Enable Vercel OIDC** for the project: Settings → Security → OIDC → turn it
    > on (team-scoped issuer). The auth helper
