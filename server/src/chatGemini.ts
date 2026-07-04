@@ -6,7 +6,8 @@ import { fetchAttachmentBase64 } from './attachmentFetch.js';
 // Chat runs through the same Vertex AI project and auth as Omni video
 // generation (gcloud ADC locally, Vercel OIDC + Workload Identity
 // Federation in production) — no separate API key required.
-const CHAT_MODEL = process.env.GEMINI_CHAT_MODEL || 'gemini-3.5-flash';
+// Hardcoded like the video model — env overrides caused invalid-model 400s.
+const CHAT_MODEL = 'gemini-3.5-flash';
 
 export interface ChatAttachment {
   /** A Cloudinary delivery URL — the client uploads there directly to

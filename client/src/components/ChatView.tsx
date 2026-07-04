@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type KeyboardEvent } from 'react';
 import { uploadAttachment, generate, streamChat, MAX_ATTACHMENT_BYTES, type ChatHistoryItem } from '../api';
 import type { Attachment, ChatMessage, ChatSession } from '../types';
 import { NanoniMark } from './NanoniMark';
+import { downloadVideo } from '../download';
 
 interface ChatViewProps {
   session: ChatSession;
@@ -47,8 +48,10 @@ export function ChatView({ session, onUpdateSession }: ChatViewProps) {
   const [streaming, setStreaming] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Full attachment bytes, kept in memory only — never written to
   // localStorage (base64 media would blow the ~5-10MB quota). This rolls up
@@ -59,6 +62,13 @@ export function ChatView({ session, onUpdateSession }: ChatViewProps) {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [session.messages]);
+
+  function autosize() {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 168)}px`;
+  }
 
   function patchMessage(id: string, patch: Partial<ChatMessage>) {
     onUpdateSession((s) => ({
@@ -113,6 +123,23 @@ export function ChatView({ session, onUpdateSession }: ChatViewProps) {
     sessionAttachmentsRef.current = merged.slice(-MAX_SESSION_ATTACHMENTS);
   }
 
+  function handleComposerKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      e.currentTarget.form?.requestSubmit();
+    }
+  }
+
+  async function copyMessage(id: string, text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId((cur) => (cur === id ? null : cur)), 1600);
+    } catch {
+      // clipboard blocked — nothing else to do
+    }
+  }
+
   async function send(e: FormEvent) {
     e.preventDefault();
     const text = input.trim();
@@ -123,6 +150,7 @@ export function ChatView({ session, onUpdateSession }: ChatViewProps) {
     setPendingAttachments([]);
     setAttachError(null);
     setError(null);
+    requestAnimationFrame(autosize);
 
     const userMsg: ChatMessage = {
       id: newId(),
@@ -216,17 +244,31 @@ export function ChatView({ session, onUpdateSession }: ChatViewProps) {
     generateVideo(messageId, message.videoPrompt);
   }
 
+  const lastModelId = [...session.messages].reverse().find((m) => m.role === 'model')?.id;
+
   return (
     <div className="chat-view">
       <div className="chat-messages">
         {session.messages.length === 0 && (
           <div className="chat-empty">
-            <NanoniMark size={44} />
+            <NanoniMark size={40} />
+            <p className="script-accent">Create Everything.</p>
             <h2>How can I help you today?</h2>
             <p>
               Ask me anything, attach files for context, or ask me to create a video — I'll always
               check with you before generating one.
             </p>
+            <div className="suggestion-row">
+              <button className="suggestion-chip" onClick={() => setInput('Create a cinematic video of ')}>
+                🎬 Create a video…
+              </button>
+              <button className="suggestion-chip" onClick={() => setInput('Brainstorm ideas for ')}>
+                💡 Brainstorm ideas
+              </button>
+              <button className="suggestion-chip" onClick={() => setInput('Search the web for ')}>
+                🔎 Search the web
+              </button>
+            </div>
           </div>
         )}
 
@@ -243,6 +285,13 @@ export function ChatView({ session, onUpdateSession }: ChatViewProps) {
                 </div>
               )}
               {m.text && <span className="chat-bubble-text">{m.text}</span>}
+              {m.role === 'model' && !m.text && streaming && m.id === lastModelId && (
+                <span className="typing-dots" aria-label="Nanoni is thinking">
+                  <span />
+                  <span />
+                  <span />
+                </span>
+              )}
 
               {m.pendingVideoPrompt && (
                 <div className="inline-confirm">
@@ -257,7 +306,7 @@ export function ChatView({ session, onUpdateSession }: ChatViewProps) {
 
               {m.isGeneratingVideo && (
                 <div className="inline-generating">
-                  <span className="spinner" /> Generating your video…
+                  <span className="spinner" /> Generating your video — this can take a minute…
                 </div>
               )}
 
@@ -270,7 +319,34 @@ export function ChatView({ session, onUpdateSession }: ChatViewProps) {
                 </div>
               )}
 
-              {m.videoUrl && <video src={m.videoUrl} controls loop className="chat-video" />}
+              {m.videoUrl && (
+                <div className="chat-video-wrap">
+                  <video src={m.videoUrl} controls loop className="chat-video" />
+                  <button
+                    type="button"
+                    className="download-btn"
+                    onClick={() => downloadVideo(m.videoUrl!)}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M12 3v12m0 0 4.5-4.5M12 15l-4.5-4.5M4 19h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    Download MP4
+                  </button>
+                </div>
+              )}
+
+              {m.role === 'model' && m.text && (
+                <div className="bubble-actions">
+                  <button
+                    type="button"
+                    className="bubble-action"
+                    title="Copy message"
+                    onClick={() => copyMessage(m.id, m.text)}
+                  >
+                    {copiedId === m.id ? 'Copied ✓' : 'Copy'}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         ))}
@@ -304,10 +380,19 @@ export function ChatView({ session, onUpdateSession }: ChatViewProps) {
             type="button"
             className="chat-attach-btn"
             title="Attach files"
+            aria-label="Attach files"
             disabled={streaming || uploading}
             onClick={() => fileInputRef.current?.click()}
           >
-            📎
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M20 11.5 12.6 19a5.1 5.1 0 0 1-7.2-7.2l8-8a3.4 3.4 0 0 1 4.8 4.8l-7.9 8a1.7 1.7 0 0 1-2.4-2.4l7.3-7.4"
+                stroke="currentColor"
+                strokeWidth="1.9"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
           </button>
           <input
             ref={fileInputRef}
@@ -317,19 +402,34 @@ export function ChatView({ session, onUpdateSession }: ChatViewProps) {
             accept="image/*,audio/*,video/*,text/*,application/pdf"
             onChange={handleFilesSelected}
           />
-          <input
+          <textarea
+            ref={textareaRef}
+            rows={1}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => {
+              setInput(e.target.value);
+              autosize();
+            }}
+            onKeyDown={handleComposerKeyDown}
             placeholder="Message Nanoni…"
             disabled={streaming}
           />
           <button
             type="submit"
+            className="send-btn"
+            aria-label="Send"
             disabled={streaming || uploading || (!input.trim() && pendingAttachments.length === 0)}
           >
-            {streaming ? '…' : 'Send'}
+            {streaming ? (
+              <span className="spinner send-spinner" />
+            ) : (
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M5 12h13M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}
           </button>
         </div>
+        <p className="composer-hint">Enter to send · Shift+Enter for a new line</p>
       </form>
     </div>
   );

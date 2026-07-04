@@ -1,16 +1,16 @@
+/**
+ * The NANONI scribble-wave logo. Renders the real brand asset from
+ * /public/logo.svg (orange #FF3D00 wave, 1000x560 viewBox — wide format),
+ * sized by height so it works at any scale from sidebar to empty states.
+ */
 export function NanoniMark({ size = 28 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden="true">
-      <rect width="48" height="48" rx="13" fill="#FF4D00" />
-      {/* NANONI scribble-wave mark */}
-      <path
-        d="M9 30 L15 18 L21 30 L27 18 L33 30 L39 18"
-        fill="none"
-        stroke="#ffffff"
-        strokeWidth="4.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    <img
+      src="/logo.svg"
+      alt=""
+      aria-hidden="true"
+      style={{ height: size, width: 'auto', display: 'block' }}
+      draggable={false}
+    />
   );
 }

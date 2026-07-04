@@ -2,7 +2,10 @@ import type { Interactions } from '@google/genai';
 import { getVertexClient } from './vertexClient.js';
 import { fetchAttachmentBase64 } from './attachmentFetch.js';
 
-const model = process.env.GEMINI_MODEL || 'gemini-omni-flash-preview';
+// Hardcoded on purpose: a stale/typo'd GEMINI_MODEL env var on Vercel was
+// causing "400 Request contains an invalid argument" from Vertex. The model
+// id lives in code now so the environment can never break generation.
+const model = 'gemini-omni-flash-preview';
 
 export interface GeneratedAsset {
   type: 'text' | 'video' | 'image';
@@ -38,7 +41,24 @@ export async function generateFromPrompt(params: {
   mode?: VideoMode;
   duration?: VideoDuration;
 }): Promise<GeneratedAsset[]> {
-  const content: Interactions.Content[] = [{ type: 'text', text: params.prompt }];
+  // This app only generates video. Both `response_modalities` and
+  // `system_instruction` are documented by the SDK's types but the live
+  // Vertex "Interactions" preview endpoint for gemini-omni-flash-preview
+  // rejects either one (even a plain string matching the SDK's own example)
+  // with a bare "Request contains an invalid argument." 400 — verified
+  // directly against the API. The instruction is folded into a SINGLE text
+  // part together with the prompt (multiple text parts in one user_input
+  // have also proven flaky against this preview endpoint).
+  const attachmentHint =
+    params.attachments && params.attachments.length > 0
+      ? ' Use the attached file(s) as reference where relevant.'
+      : '';
+  const content: Interactions.Content[] = [
+    {
+      type: 'text',
+      text: `Generate a video (not text, not an image) for the following request:${attachmentHint}\n\n${params.prompt}`,
+    },
+  ];
 
   for (const attachment of params.attachments ?? []) {
     content.push({
@@ -54,22 +74,6 @@ export async function generateFromPrompt(params: {
     typeof params.duration === 'number' && params.duration >= 3 && params.duration <= 10
       ? params.duration
       : undefined;
-
-  // This app only generates video. Both `response_modalities` and
-  // `system_instruction` are documented by the SDK's types but the live
-  // Vertex "Interactions" preview endpoint for gemini-omni-flash-preview
-  // rejects either one (even a plain string matching the SDK's own example)
-  // with a bare "Request contains an invalid argument." 400 — verified
-  // directly against the API. Folding the instruction into the user content
-  // instead reliably still returns a video-only response.
-  const attachmentHint =
-    params.attachments && params.attachments.length > 0
-      ? ` Use the attached file(s) as reference where relevant.`
-      : '';
-  content.unshift({
-    type: 'text',
-    text: `Generate a video (not text, not an image) for the following request:${attachmentHint}`,
-  });
 
   const interaction = await getVertexClient().interactions.create({
     model,
