@@ -1,8 +1,25 @@
-import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type KeyboardEvent } from 'react';
-import { uploadAttachment, generate, streamChat, MAX_ATTACHMENT_BYTES, type ChatHistoryItem } from '../api';
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react';
+import { generate, streamChat, type ChatHistoryItem } from '../api';
 import type { Attachment, ChatMessage, ChatSession } from '../types';
 import { NanoniMark } from './NanoniMark';
+import { MarkdownText } from './Markdown';
 import { downloadVideo } from '../download';
+import { useAttachments } from '../hooks/useAttachments';
+import { useToasts } from '../hooks/useToasts';
+import { ToastStack } from './ToastStack';
+import {
+  AudioIcon,
+  BulbIcon,
+  ChevronDownIcon,
+  DocumentIcon,
+  DownloadIcon,
+  ImageIcon,
+  PencilIcon,
+  RefreshIcon,
+  SearchIcon,
+  StopIcon,
+  VideoIcon,
+} from './icons';
 
 interface ChatViewProps {
   session: ChatSession;
@@ -16,15 +33,19 @@ const MAX_SESSION_ATTACHMENTS = 4;
 /** How many files can be attached to a single message at once. */
 const MAX_ATTACHMENTS_PER_MESSAGE = 4;
 
-const KIND_ICON: Record<Attachment['kind'], string> = {
-  image: '🖼️',
-  audio: '🎵',
-  video: '🎬',
-  document: '📄',
+const KIND_ICON: Record<Attachment['kind'], ReactNode> = {
+  image: <ImageIcon size={13} />,
+  audio: <AudioIcon size={13} />,
+  video: <VideoIcon size={13} />,
+  document: <DocumentIcon size={13} />,
 };
 
 function newId(): string {
   return crypto.randomUUID();
+}
+
+function formatTime(ts: number): string {
+  return new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
 /** Vertex's safety filter rejections are generic 400s with wording that
@@ -43,15 +64,26 @@ function friendlyVideoError(raw: string): string {
 
 export function ChatView({ session, onUpdateSession }: ChatViewProps) {
   const [input, setInput] = useState('');
-  const [pendingAttachments, setPendingAttachments] = useState<Attachment[]>([]);
-  const [attachError, setAttachError] = useState<string | null>(null);
+  const {
+    attachments: pendingAttachments,
+    uploading,
+    error: attachError,
+    addFiles: handleFilesSelected,
+    remove: removePendingAttachment,
+    clear: clearPendingAttachments,
+    setError: setAttachError,
+  } = useAttachments(MAX_ATTACHMENTS_PER_MESSAGE);
   const [streaming, setStreaming] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const { toasts, push: pushToast, dismiss: dismissToast } = useToasts();
   const bottomRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
 
   // Full attachment bytes, kept in memory only — never written to
   // localStorage (base64 media would blow the ~5-10MB quota). This rolls up
@@ -60,8 +92,42 @@ export function ChatView({ session, onUpdateSession }: ChatViewProps) {
   const sessionAttachmentsRef = useRef<Attachment[]>([]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (!streaming) return;
+    function onKeyDown(e: globalThis.KeyboardEvent) {
+      if (e.key === 'Escape') abortRef.current?.abort();
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [streaming]);
+
+  useEffect(() => {
+    const el = messagesRef.current;
+    if (!el) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+    if (nearBottom) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      setShowScrollToBottom(true);
+    }
   }, [session.messages]);
+
+  function handleMessagesScroll() {
+    const el = messagesRef.current;
+    if (!el) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+    setShowScrollToBottom(!nearBottom);
+  }
+
+  function scrollToBottom() {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    setShowScrollToBottom(false);
+  }
+
+  useEffect(() => {
+    if (!attachError) return;
+    pushToast(attachError);
+    setAttachError(null);
+  }, [attachError, pushToast, setAttachError]);
 
   function autosize() {
     const el = textareaRef.current;
@@ -75,46 +141,6 @@ export function ChatView({ session, onUpdateSession }: ChatViewProps) {
       ...s,
       messages: s.messages.map((m) => (m.id === id ? { ...m, ...patch } : m)),
     }));
-  }
-
-  async function handleFilesSelected(e: ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files ?? []);
-    e.target.value = '';
-    if (files.length === 0) return;
-
-    setAttachError(null);
-    const room = MAX_ATTACHMENTS_PER_MESSAGE - pendingAttachments.length;
-    if (room <= 0) {
-      setAttachError(`You can attach up to ${MAX_ATTACHMENTS_PER_MESSAGE} files per message.`);
-      return;
-    }
-
-    const toAdd = files.slice(0, room);
-    const oversized = toAdd.filter((f) => f.size > MAX_ATTACHMENT_BYTES);
-    const ok = toAdd.filter((f) => f.size <= MAX_ATTACHMENT_BYTES);
-
-    if (oversized.length > 0) {
-      const limitMb = Math.round(MAX_ATTACHMENT_BYTES / (1024 * 1024));
-      setAttachError(`${oversized.map((f) => f.name).join(', ')} exceeds the ${limitMb}MB attachment limit.`);
-    }
-    if (files.length > toAdd.length) {
-      setAttachError(`Only ${MAX_ATTACHMENTS_PER_MESSAGE} files can be attached per message.`);
-    }
-    if (ok.length === 0) return;
-
-    setUploading(true);
-    try {
-      const converted = await Promise.all(ok.map(uploadAttachment));
-      setPendingAttachments((prev) => [...prev, ...converted]);
-    } catch (err) {
-      setAttachError(err instanceof Error ? err.message : 'Upload failed');
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  function removePendingAttachment(id: string) {
-    setPendingAttachments((prev) => prev.filter((a) => a.id !== id));
   }
 
   function rememberSessionAttachments(attachments: Attachment[]) {
@@ -140,6 +166,37 @@ export function ChatView({ session, onUpdateSession }: ChatViewProps) {
     }
   }
 
+  async function runStream(historyForRequest: ChatHistoryItem[], modelMsgId: string) {
+    setStreaming(true);
+    let accumulated = '';
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    try {
+      for await (const event of streamChat(historyForRequest, controller.signal)) {
+        if (event.type === 'text') {
+          accumulated += event.text;
+          patchMessage(modelMsgId, { text: accumulated });
+        } else if (event.type === 'video_request') {
+          patchMessage(modelMsgId, {
+            text: accumulated || `I can generate a video for you: "${event.prompt}"`,
+            pendingVideoPrompt: event.prompt,
+            videoPrompt: event.prompt,
+          });
+        } else if (event.type === 'error') {
+          pushToast(event.message);
+        }
+      }
+    } catch (err) {
+      if (!(err instanceof DOMException && err.name === 'AbortError')) {
+        pushToast(err instanceof Error ? err.message : 'Chat failed');
+      }
+    } finally {
+      setStreaming(false);
+      abortRef.current = null;
+    }
+  }
+
   async function send(e: FormEvent) {
     e.preventDefault();
     const text = input.trim();
@@ -147,15 +204,14 @@ export function ChatView({ session, onUpdateSession }: ChatViewProps) {
 
     const attachments = pendingAttachments;
     setInput('');
-    setPendingAttachments([]);
-    setAttachError(null);
-    setError(null);
+    clearPendingAttachments();
     requestAnimationFrame(autosize);
 
     const userMsg: ChatMessage = {
       id: newId(),
       role: 'user',
       text,
+      createdAt: Date.now(),
       attachments: attachments.length > 0 ? attachments.map((a) => ({ name: a.name, kind: a.kind })) : undefined,
     };
     rememberSessionAttachments(attachments);
@@ -171,32 +227,72 @@ export function ChatView({ session, onUpdateSession }: ChatViewProps) {
       ...s,
       title: s.title || text.slice(0, 60) || 'Attachment',
       updatedAt: Date.now(),
-      messages: [...s.messages, userMsg, { id: modelMsgId, role: 'model', text: '' }],
+      messages: [...s.messages, userMsg, { id: modelMsgId, role: 'model', text: '', createdAt: Date.now() }],
     }));
 
-    setStreaming(true);
-    let accumulated = '';
+    await runStream(historyForRequest, modelMsgId);
+  }
 
-    try {
-      for await (const event of streamChat(historyForRequest)) {
-        if (event.type === 'text') {
-          accumulated += event.text;
-          patchMessage(modelMsgId, { text: accumulated });
-        } else if (event.type === 'video_request') {
-          patchMessage(modelMsgId, {
-            text: accumulated || `I can generate a video for you: "${event.prompt}"`,
-            pendingVideoPrompt: event.prompt,
-            videoPrompt: event.prompt,
-          });
-        } else if (event.type === 'error') {
-          setError(event.message);
-        }
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Chat failed');
-    } finally {
-      setStreaming(false);
+  function regenerate(messageId: string) {
+    if (streaming) return;
+    const index = session.messages.findIndex((m) => m.id === messageId);
+    if (index === -1 || session.messages[index].role !== 'model') return;
+
+    const historyForRequest: ChatHistoryItem[] = session.messages
+      .slice(0, index)
+      .map((m) => ({ role: m.role, text: m.text }));
+
+    patchMessage(messageId, {
+      text: '',
+      createdAt: Date.now(),
+      pendingVideoPrompt: undefined,
+      videoPrompt: undefined,
+      videoUrl: undefined,
+      videoError: undefined,
+    });
+
+    void runStream(historyForRequest, messageId);
+  }
+
+  function stopStreaming() {
+    abortRef.current?.abort();
+  }
+
+  function startEdit(m: ChatMessage) {
+    if (streaming) return;
+    setEditingId(m.id);
+    setEditValue(m.text);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditValue('');
+  }
+
+  function commitEdit(messageId: string) {
+    const index = session.messages.findIndex((m) => m.id === messageId);
+    const newText = editValue.trim();
+    if (index === -1 || !newText) {
+      cancelEdit();
+      return;
     }
+
+    const historyForRequest: ChatHistoryItem[] = session.messages
+      .slice(0, index)
+      .map((m) => ({ role: m.role, text: m.text }));
+    historyForRequest.push({ role: 'user', text: newText });
+
+    const modelMsgId = newId();
+    onUpdateSession((s) => ({
+      ...s,
+      messages: [
+        ...s.messages.slice(0, index),
+        { ...s.messages[index], text: newText, createdAt: Date.now() },
+        { id: modelMsgId, role: 'model', text: '', createdAt: Date.now() },
+      ],
+    }));
+    cancelEdit();
+    void runStream(historyForRequest, modelMsgId);
   }
 
   function respondToConfirm(messageId: string, confirmed: boolean) {
@@ -248,7 +344,7 @@ export function ChatView({ session, onUpdateSession }: ChatViewProps) {
 
   return (
     <div className="chat-view">
-      <div className="chat-messages">
+      <div className="chat-messages" ref={messagesRef} onScroll={handleMessagesScroll}>
         {session.messages.length === 0 && (
           <div className="chat-empty">
             <NanoniMark size={40} />
@@ -260,13 +356,13 @@ export function ChatView({ session, onUpdateSession }: ChatViewProps) {
             </p>
             <div className="suggestion-row">
               <button className="suggestion-chip" onClick={() => setInput('Create a cinematic video of ')}>
-                🎬 Create a video…
+                <VideoIcon size={14} /> Create a video…
               </button>
               <button className="suggestion-chip" onClick={() => setInput('Brainstorm ideas for ')}>
-                💡 Brainstorm ideas
+                <BulbIcon size={14} /> Brainstorm ideas
               </button>
               <button className="suggestion-chip" onClick={() => setInput('Search the web for ')}>
-                🔎 Search the web
+                <SearchIcon size={14} /> Search the web
               </button>
             </div>
           </div>
@@ -274,6 +370,11 @@ export function ChatView({ session, onUpdateSession }: ChatViewProps) {
 
         {session.messages.map((m) => (
           <div key={m.id} className={`chat-bubble ${m.role}`}>
+            {m.role === 'model' && (
+              <div className="chat-avatar">
+                <NanoniMark size={16} />
+              </div>
+            )}
             <div className="chat-bubble-content">
               {m.attachments && m.attachments.length > 0 && (
                 <div className="attachment-chips">
@@ -284,7 +385,39 @@ export function ChatView({ session, onUpdateSession }: ChatViewProps) {
                   ))}
                 </div>
               )}
-              {m.text && <span className="chat-bubble-text">{m.text}</span>}
+              {editingId === m.id ? (
+                <div className="edit-message">
+                  <textarea
+                    className="nodrag"
+                    autoFocus
+                    rows={2}
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        commitEdit(m.id);
+                      } else if (e.key === 'Escape') {
+                        cancelEdit();
+                      }
+                    }}
+                  />
+                  <div className="edit-message-actions">
+                    <button type="button" className="inline-confirm-btn secondary" onClick={cancelEdit}>
+                      Cancel
+                    </button>
+                    <button type="button" className="inline-confirm-btn primary" onClick={() => commitEdit(m.id)}>
+                      Save & submit
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                m.text && (
+                  <div className="chat-bubble-text">
+                    {m.role === 'model' ? <MarkdownText text={m.text} /> : m.text}
+                  </div>
+                )
+              )}
               {m.role === 'model' && !m.text && streaming && m.id === lastModelId && (
                 <span className="typing-dots" aria-label="Nanoni is thinking">
                   <span />
@@ -327,9 +460,7 @@ export function ChatView({ session, onUpdateSession }: ChatViewProps) {
                     className="download-btn"
                     onClick={() => downloadVideo(m.videoUrl!)}
                   >
-                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                      <path d="M12 3v12m0 0 4.5-4.5M12 15l-4.5-4.5M4 19h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
+                    <DownloadIcon size={16} />
                     Download MP4
                   </button>
                 </div>
@@ -345,6 +476,29 @@ export function ChatView({ session, onUpdateSession }: ChatViewProps) {
                   >
                     {copiedId === m.id ? 'Copied ✓' : 'Copy'}
                   </button>
+                  {m.id === lastModelId && !streaming && (
+                    <button
+                      type="button"
+                      className="bubble-action"
+                      title="Regenerate response"
+                      onClick={() => regenerate(m.id)}
+                    >
+                      <RefreshIcon size={13} /> Regenerate
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {m.role === 'user' && m.text && !streaming && editingId !== m.id && (
+                <div className="bubble-actions">
+                  <button
+                    type="button"
+                    className="bubble-action"
+                    title="Edit message"
+                    onClick={() => startEdit(m)}
+                  >
+                    <PencilIcon size={12} /> Edit
+                  </button>
                 </div>
               )}
             </div>
@@ -353,8 +507,16 @@ export function ChatView({ session, onUpdateSession }: ChatViewProps) {
         <div ref={bottomRef} />
       </div>
 
-      {error && <div className="chat-error">{error}</div>}
-      {attachError && <div className="chat-error">{attachError}</div>}
+      {showScrollToBottom && (
+        <button
+          type="button"
+          className="scroll-to-bottom-btn"
+          aria-label="Scroll to latest message"
+          onClick={scrollToBottom}
+        >
+          <ChevronDownIcon size={16} />
+        </button>
+      )}
 
       <form className="chat-composer" onSubmit={send}>
         {(pendingAttachments.length > 0 || uploading) && (
@@ -415,13 +577,15 @@ export function ChatView({ session, onUpdateSession }: ChatViewProps) {
             disabled={streaming}
           />
           <button
-            type="submit"
-            className="send-btn"
-            aria-label="Send"
-            disabled={streaming || uploading || (!input.trim() && pendingAttachments.length === 0)}
+            type={streaming ? 'button' : 'submit'}
+            className={`send-btn${streaming ? ' send-btn-stop' : ''}`}
+            aria-label={streaming ? 'Stop generating' : 'Send'}
+            title={streaming ? 'Stop generating' : 'Send'}
+            disabled={!streaming && (uploading || (!input.trim() && pendingAttachments.length === 0))}
+            onClick={streaming ? stopStreaming : undefined}
           >
             {streaming ? (
-              <span className="spinner send-spinner" />
+              <StopIcon size={14} />
             ) : (
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M5 12h13M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -431,6 +595,7 @@ export function ChatView({ session, onUpdateSession }: ChatViewProps) {
         </div>
         <p className="composer-hint">Enter to send · Shift+Enter for a new line</p>
       </form>
+      <ToastStack toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }

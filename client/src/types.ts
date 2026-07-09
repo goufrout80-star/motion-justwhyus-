@@ -27,6 +27,7 @@ export interface ChatMessage {
   id: string;
   role: 'user' | 'model';
   text: string;
+  createdAt?: number;
   attachments?: AttachmentMeta[];
   /** Set while waiting on the user's yes/no — shows inline confirm buttons. */
   pendingVideoPrompt?: string;
@@ -44,6 +45,38 @@ export interface ChatSession {
   createdAt: number;
   updatedAt: number;
   messages: ChatMessage[];
+}
+
+// ============================================================
+// Remotion Studio — chat-driven video composition builder
+// ============================================================
+
+export interface RemotionMessage {
+  id: string;
+  role: 'user' | 'model';
+  text: string;
+  createdAt?: number;
+  /** A proposed composition awaiting the user's yes/no. */
+  pendingCode?: string;
+  pendingSummary?: string;
+  pendingDurationInFrames?: number;
+  /** True once this message's proposal was accepted and applied. */
+  applied?: boolean;
+}
+
+export interface RemotionProject {
+  id: string;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+  /** The currently active, applied composition. Empty until the first
+   * proposal is accepted — the preview shows a placeholder until then. */
+  code: string;
+  durationInFrames: number;
+  fps: number;
+  width: number;
+  height: number;
+  messages: RemotionMessage[];
 }
 
 export function kindFromMimeType(mimeType: string): AttachmentKind {

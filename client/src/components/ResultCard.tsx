@@ -1,5 +1,12 @@
 import type { GenerationResult } from '../api';
-import { downloadVideo } from '../download';
+import { downloadImage, downloadVideo } from '../download';
+import { DownloadIcon } from './icons';
+
+function imageExtension(dataUrl: string): string {
+  const match = /^data:image\/([a-zA-Z0-9+.-]+);/.exec(dataUrl);
+  const type = match?.[1] || 'png';
+  return type === 'jpeg' ? 'jpg' : type;
+}
 
 export function ResultCard({ result }: { result: GenerationResult }) {
   if (result.type === 'video') {
@@ -16,9 +23,7 @@ export function ResultCard({ result }: { result: GenerationResult }) {
         {src && (
           <div className="result-actions">
             <button type="button" className="download-btn" onClick={() => downloadVideo(src)}>
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M12 3v12m0 0 4.5-4.5M12 15l-4.5-4.5M4 19h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <DownloadIcon size={16} />
               Download MP4
             </button>
           </div>
@@ -36,6 +41,22 @@ export function ResultCard({ result }: { result: GenerationResult }) {
           <a href={result.uri} target="_blank" rel="noreferrer" className="result-link">
             View generated image
           </a>
+        )}
+        {(result.dataUrl || result.uri) && (
+          <div className="result-actions">
+            <button
+              type="button"
+              className="download-btn"
+              onClick={() => {
+                const src = result.dataUrl || result.uri!;
+                const ext = result.dataUrl ? imageExtension(result.dataUrl) : 'png';
+                downloadImage(src, `nanoni-image-${Date.now()}.${ext}`);
+              }}
+            >
+              <DownloadIcon size={16} />
+              Download image
+            </button>
+          </div>
         )}
       </div>
     );

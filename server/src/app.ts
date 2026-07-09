@@ -3,6 +3,8 @@ import cors from 'cors';
 import { generateRouter } from './routes/generate.js';
 import { chatRouter } from './routes/chat.js';
 import { videosRouter } from './routes/videos.js';
+import { workflowRouter } from './routes/workflow.js';
+import { remotionRouter } from './routes/remotion.js';
 import { handleMcpRequest } from './mcp.js';
 
 export const app = express();
@@ -21,6 +23,13 @@ app.use('/api/generate', generateRouter);
 
 // Conversational Gemini chat — same Vertex AI project/auth as Omni.
 app.use('/api/chat', chatRouter);
+
+// Node-based image-generation workflow: Prompt/Refine + Image Gen nodes.
+app.use('/api/workflow', workflowRouter);
+
+// Remotion Studio: chat-driven video composition coding (preview only, no
+// server-side render yet — see server/src/remotionChat.ts).
+app.use('/api/remotion-chat', remotionRouter);
 
 // Hosted video links returned by the MCP tool and the web app, e.g.
 // https://motion.nanoni.studio/videos/<id> — redirects to the underlying

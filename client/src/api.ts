@@ -65,7 +65,8 @@ export interface GenerateOptions {
 export async function generate(
   prompt: string,
   attachments: Attachment[] = [],
-  options: GenerateOptions = {}
+  options: GenerateOptions = {},
+  signal?: AbortSignal
 ): Promise<GenerationResult[]> {
   const body: Record<string, unknown> = { prompt };
 
@@ -79,6 +80,7 @@ export async function generate(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
+    signal,
   });
 
   // The server may (rarely) return non-JSON — e.g. a platform-level crash page.
@@ -119,7 +121,10 @@ export interface ChatHistoryItem {
  * event as `data: <json>\n\n`; this parses that incrementally as chunks
  * arrive so the UI can render text as it's generated.
  */
-export async function* streamChat(messages: ChatHistoryItem[]): AsyncGenerator<ChatEvent> {
+export async function* streamChat(
+  messages: ChatHistoryItem[],
+  signal?: AbortSignal
+): AsyncGenerator<ChatEvent> {
   const wireMessages = messages.map((m) => ({
     role: m.role,
     text: m.text,
@@ -132,6 +137,7 @@ export async function* streamChat(messages: ChatHistoryItem[]): AsyncGenerator<C
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ messages: wireMessages }),
+    signal,
   });
 
   if (!res.ok || !res.body) {

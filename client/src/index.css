@@ -398,12 +398,13 @@ body::before {
   cursor: pointer;
   text-align: left;
   margin-top: 6px;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s var(--ease-spring);
 }
 
 .nav-item:hover {
   background: var(--surface-2);
   color: var(--text);
+  transform: translateX(2px);
 }
 
 .nav-item.active {
@@ -508,10 +509,167 @@ body::before {
   background: var(--danger-bg);
 }
 
+.chat-history-delete.confirming {
+  color: var(--danger);
+  background: var(--danger-bg);
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  padding: 6px 10px;
+}
+
+.chat-history-rename {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: transparent;
+  padding: 6px 4px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.chat-history-item:hover .chat-history-rename,
+.chat-history-item.active .chat-history-rename {
+  color: var(--muted);
+}
+
+.chat-history-rename:hover {
+  color: var(--orange);
+  background: var(--surface-3);
+}
+
+.chat-history-rename-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--surface-3);
+  border: 1px solid var(--orange);
+  color: var(--text);
+  text-align: left;
+  padding: 8px 6px 8px 11px;
+  margin: 3px 0;
+  font-size: 13.5px;
+  border-radius: 8px;
+  outline: none;
+}
+
 .sidebar-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   padding: 12px 12px 4px;
   border-top: 1px solid var(--border);
   margin-top: 8px;
+}
+
+.shortcuts-trigger {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease, transform 0.15s var(--ease-spring);
+}
+
+.shortcuts-trigger:hover {
+  color: var(--text);
+  background: var(--surface-2);
+  transform: translateY(-1px);
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(5, 5, 6, 0.6);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: pop 0.18s ease both;
+}
+
+.modal-panel {
+  width: min(420px, 92vw);
+  max-height: 80vh;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+  padding: 18px 20px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+  animation: rise 0.22s var(--ease-out) both;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.modal-close:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.shortcuts-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.shortcuts-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.shortcuts-list kbd {
+  flex-shrink: 0;
+  min-width: 88px;
+  text-align: center;
+  background: var(--surface-3);
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  color: var(--text);
+}
+
+.shortcuts-list span {
+  color: var(--muted);
+  font-size: 13.5px;
 }
 
 .app-main {
@@ -522,6 +680,26 @@ body::before {
   min-width: 0;
 }
 
+.view-transition {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  animation: viewFade 0.32s var(--ease-out) both;
+}
+
+@keyframes viewFade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* ============================================================
    Chat
    ============================================================ */
@@ -529,6 +707,33 @@ body::before {
   display: flex;
   flex-direction: column;
   height: 100%;
+  position: relative;
+}
+
+.scroll-to-bottom-btn {
+  position: absolute;
+  left: 50%;
+  bottom: 96px;
+  transform: translateX(-50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  z-index: 5;
+  animation: pop 0.2s var(--ease-spring) both;
+  transition: background 0.15s ease, transform 0.15s var(--ease-spring);
+}
+
+.scroll-to-bottom-btn:hover {
+  background: var(--surface-3);
+  transform: translateX(-50%) translateY(-2px);
 }
 
 .chat-messages {
@@ -615,6 +820,21 @@ body::before {
 
 .chat-bubble.model {
   justify-content: flex-start;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.chat-avatar {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  margin-bottom: 2px;
 }
 
 .chat-bubble-content {
@@ -643,6 +863,122 @@ body::before {
 
 .chat-bubble-text {
   display: block;
+}
+
+.chat-bubble-text p {
+  margin: 0 0 0.6em;
+}
+
+.chat-bubble-text p:last-child {
+  margin-bottom: 0;
+}
+
+.chat-bubble-text ul,
+.chat-bubble-text ol {
+  margin: 0 0 0.6em;
+  padding-left: 1.35em;
+}
+
+.chat-bubble-text ul:last-child,
+.chat-bubble-text ol:last-child {
+  margin-bottom: 0;
+}
+
+.chat-bubble-text li {
+  margin-bottom: 0.25em;
+}
+
+.chat-bubble-text li:last-child {
+  margin-bottom: 0;
+}
+
+.chat-bubble-text .md-heading {
+  font-weight: 700;
+  margin: 0.2em 0 0.4em;
+}
+
+.chat-bubble-text .md-h1 {
+  font-size: 1.15em;
+}
+
+.chat-bubble-text .md-h2 {
+  font-size: 1.08em;
+}
+
+.chat-bubble-text .md-h3 {
+  font-size: 1.02em;
+}
+
+.chat-bubble-text .inline-code {
+  background: rgba(127, 127, 127, 0.2);
+  border-radius: 4px;
+  padding: 0.1em 0.4em;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 0.92em;
+}
+
+.chat-bubble.user .chat-bubble-text .inline-code {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.chat-bubble-text .md-code-block-wrap {
+  position: relative;
+  margin: 0 0 0.6em;
+}
+
+.chat-bubble-text .md-code-block-wrap:last-child {
+  margin-bottom: 0;
+}
+
+.chat-bubble-text .md-code-block {
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 0;
+  overflow-x: auto;
+  font-size: 0.88em;
+}
+
+.chat-bubble-text .md-code-block code {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  white-space: pre;
+}
+
+.chat-bubble-text .md-code-copy {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  opacity: 0.65;
+  transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.chat-bubble-text .md-code-block-wrap:hover .md-code-copy {
+  opacity: 1;
+}
+
+.chat-bubble-text .md-code-copy:hover {
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.chat-bubble-text a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 255, 255, 0.4);
+}
+
+.chat-bubble.model .chat-bubble-text a {
+  color: var(--orange);
+  text-decoration-color: transparent;
 }
 
 .typing-dots {
@@ -674,6 +1010,9 @@ body::before {
 }
 
 .bubble-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   background: none;
   border: none;
   color: var(--muted);
@@ -682,12 +1021,13 @@ body::before {
   cursor: pointer;
   padding: 3px 8px;
   border-radius: 7px;
-  transition: color 0.15s ease, background 0.15s ease;
+  transition: color 0.15s ease, background 0.15s ease, transform 0.15s var(--ease-spring);
 }
 
 .bubble-action:hover {
   color: var(--text);
   background: var(--surface-3);
+  transform: translateY(-1px);
 }
 
 .inline-generating {
@@ -757,17 +1097,59 @@ body::before {
   height: 15px;
 }
 
-.chat-error {
-  max-width: 780px;
-  width: calc(100% - 48px);
-  margin: 0 auto 8px;
-  padding: 12px 16px;
+/* ---- toast stack ---- */
+.toast-stack {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: min(360px, calc(100vw - 36px));
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  animation: rise 0.24s var(--ease-out) both;
+}
+
+.toast-error {
   background: var(--danger-bg);
   border: 1px solid var(--danger-line);
   color: var(--danger);
-  border-radius: 12px;
-  font-size: 13.5px;
-  animation: pop 0.2s var(--ease-out) both;
+}
+
+.toast-info {
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+}
+
+.toast span {
+  flex: 1;
+}
+
+.toast button {
+  background: none;
+  border: none;
+  color: inherit;
+  opacity: 0.7;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.toast button:hover {
+  opacity: 1;
 }
 
 /* ---- composer ---- */
@@ -873,12 +1255,14 @@ body::before {
   cursor: not-allowed;
 }
 
-.send-spinner {
-  width: 17px;
-  height: 17px;
-  border-width: 2px;
-  border-color: rgba(255, 255, 255, 0.35);
-  border-top-color: #fff;
+.send-btn-stop {
+  background: var(--surface-3, #2a2a2a);
+  color: var(--text);
+}
+
+.send-btn-stop:hover {
+  background: var(--danger, #e5484d);
+  color: #fff;
 }
 
 .composer-hint {
@@ -949,6 +1333,37 @@ body::before {
   gap: 10px;
   margin-top: 12px;
   animation: pop 0.24s var(--ease-spring) both;
+}
+
+.edit-message {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 240px;
+}
+
+.edit-message textarea {
+  width: 100%;
+  resize: vertical;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 10px;
+  padding: 8px 10px;
+  color: inherit;
+  font-family: inherit;
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+
+.edit-message-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.edit-message-actions .inline-confirm-btn {
+  padding: 6px 14px;
+  font-size: 12.5px;
 }
 
 .inline-confirm-btn {
@@ -1118,34 +1533,6 @@ body::before {
   flex-wrap: wrap;
 }
 
-.upload-zone {
-  width: 58px;
-  height: 58px;
-  border-radius: 16px;
-  border: 1.5px dashed var(--border-strong);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 10.5px;
-  color: var(--muted);
-  text-align: center;
-  overflow: hidden;
-  flex-shrink: 0;
-  transition: border-color 0.15s ease, color 0.15s ease;
-}
-
-.upload-zone:hover {
-  border-color: var(--orange);
-  color: var(--orange);
-}
-
-.upload-preview {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
 .clear-btn {
   background: none;
   border: none;
@@ -1209,6 +1596,59 @@ body::before {
   gap: 14px;
   color: var(--muted);
   animation: rise 0.3s var(--ease-out) both;
+}
+
+.loading-progress {
+  width: min(320px, 80vw);
+  height: 4px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.loading-progress-bar {
+  width: 40%;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, var(--orange), transparent);
+  animation: progressSlide 1.6s ease-in-out infinite;
+}
+
+@keyframes progressSlide {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+
+.result-skeleton {
+  width: min(360px, 86vw);
+  margin-top: 6px;
+}
+
+.result-skeleton-media {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 18px;
+  background: linear-gradient(
+    100deg,
+    var(--surface-2) 30%,
+    var(--surface-3) 50%,
+    var(--surface-2) 70%
+  );
+  background-size: 220% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 120% 0;
+  }
+  100% {
+    background-position: -20% 0;
+  }
 }
 
 .spinner {
@@ -1383,6 +1823,518 @@ body::before {
 }
 
 /* ============================================================
+   Sidebar search
+   ============================================================ */
+.sidebar-search {
+  padding: 6px 12px 4px;
+}
+
+.sidebar-search input {
+  width: 100%;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.sidebar-search input:focus {
+  border-color: var(--orange);
+}
+
+.sidebar-search input::placeholder {
+  color: var(--muted);
+}
+
+/* ============================================================
+   Workflow builder — node canvas
+   ============================================================ */
+.workflow-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.workflow-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.workflow-toolbar-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.workflow-beta-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--violet);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.workflow-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.wf-toolbar-btn {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.wf-toolbar-btn:hover {
+  border-color: var(--orange);
+}
+
+.wf-run-all {
+  padding: 8px 18px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wf-toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wf-template-select {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0 10px;
+  color: var(--muted);
+}
+
+.wf-template-select select {
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 13px;
+  padding: 8px 4px;
+  outline: none;
+  cursor: pointer;
+  max-width: 160px;
+}
+
+.workflow-canvas {
+  flex: 1;
+  min-height: 0;
+}
+
+.workflow-canvas .react-flow {
+  background: var(--bg);
+}
+
+.workflow-canvas .react-flow__controls {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: none;
+}
+
+.workflow-canvas .react-flow__controls-button {
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+
+.workflow-canvas .react-flow__controls-button:hover {
+  background: var(--surface-3);
+}
+
+.workflow-canvas .wf-minimap {
+  background: var(--surface) !important;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.workflow-canvas .react-flow__edge-path {
+  stroke: var(--orange-line);
+  stroke-width: 2;
+}
+
+.workflow-canvas .react-flow__edge.selected .react-flow__edge-path,
+.workflow-canvas .react-flow__connection-path {
+  stroke: var(--orange);
+}
+
+.workflow-canvas .react-flow__handle {
+  width: 10px;
+  height: 10px;
+  background: var(--orange);
+  border: 2px solid var(--bg);
+}
+
+/* ---- node cards ---- */
+.wf-node {
+  position: relative;
+  width: 320px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+  padding: 14px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wf-handle-column {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.wf-handle-column-left {
+  left: -11px;
+}
+
+.wf-handle-column-right {
+  right: -11px;
+}
+
+.wf-handle-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 14px;
+}
+
+.wf-handle-column-left .wf-handle-row {
+  flex-direction: row-reverse;
+}
+
+.wf-handle-remove {
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  color: var(--muted);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wf-handle-remove:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.wf-handle-add {
+  background: var(--surface-2);
+  border: 1px dashed var(--border-strong);
+  color: var(--muted);
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wf-handle-add:hover {
+  border-color: var(--orange);
+  color: var(--orange);
+}
+
+.wf-node-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text);
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.wf-node-icon {
+  font-size: 15px;
+}
+
+.wf-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wf-field > span {
+  color: var(--violet);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.wf-field textarea,
+.wf-field select,
+.wf-field input {
+  width: 100%;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 7px 9px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-family: inherit;
+  outline: none;
+  resize: vertical;
+}
+
+.wf-field textarea:focus,
+.wf-field select:focus,
+.wf-field input:focus {
+  border-color: var(--orange);
+}
+
+.wf-field-row {
+  display: flex;
+  gap: 8px;
+}
+
+.wf-field-row .wf-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.wf-hint {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 0;
+}
+
+.wf-advanced-toggle {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 11.5px;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+}
+
+.wf-advanced-toggle:hover {
+  color: var(--text);
+}
+
+.wf-run-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: linear-gradient(135deg, var(--orange), var(--orange-hot));
+  color: white;
+  border: none;
+  padding: 9px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.wf-run-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.wf-spinner {
+  width: 14px;
+  height: 14px;
+  border-width: 2px;
+  border-color: rgba(255, 255, 255, 0.35);
+  border-top-color: white;
+}
+
+.wf-node-error {
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-line);
+  color: var(--danger);
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.wf-node-output {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
+.wf-output-label {
+  display: block;
+  color: var(--violet);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.wf-node-output p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text);
+  max-height: 140px;
+  overflow-y: auto;
+}
+
+.wf-image-results {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wf-image-result img {
+  width: 100%;
+  border-radius: 10px;
+  display: block;
+}
+
+.wf-image-result button {
+  width: 100%;
+  margin-top: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 7px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.wf-image-result button:hover {
+  border-color: var(--orange);
+}
+
+.wf-dropzone-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wf-dropzone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 10px;
+  border: 1.5px dashed var(--border-strong);
+  border-radius: 12px;
+  color: var(--muted);
+  font-size: 11.5px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.wf-dropzone:hover,
+.wf-dropzone.active {
+  border-color: var(--orange);
+  background: var(--orange-soft);
+  color: var(--text);
+}
+
+.wf-dropzone.disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.wf-dropzone-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.wf-dropzone-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 8px 3px 3px;
+  font-size: 11px;
+  color: var(--text);
+  max-width: 140px;
+}
+
+.wf-dropzone-chip img {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.wf-dropzone-chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wf-dropzone-chip button {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.wf-dropzone-chip button:hover {
+  color: var(--danger);
+}
+
+/* ============================================================
    Responsive — mobile drawer
    ============================================================ */
 @media (max-width: 900px) {
@@ -1458,6 +2410,41 @@ body::before {
   .script-accent {
     font-size: 24px;
   }
+
+  .workflow-toolbar {
+    padding: 12px 14px;
+    gap: 10px;
+  }
+
+  .workflow-toolbar-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .wf-template-select {
+    flex: 1 1 100%;
+    order: 3;
+  }
+
+  .wf-template-select select {
+    max-width: none;
+    flex: 1;
+  }
+
+  .wf-toolbar-btn,
+  .wf-run-all {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  .workflow-canvas .react-flow__panel.react-flow__minimap {
+    display: none;
+  }
+
+  .wf-node {
+    width: min(320px, 84vw);
+  }
 }
 
 /* very small phones */
@@ -1481,4 +2468,191 @@ body::before {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ============================================================
+   Remotion Studio — chat + live preview split pane
+   ============================================================ */
+.remotion-studio {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+}
+
+.remotion-chat-pane {
+  width: 420px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--border);
+}
+
+.remotion-chat-messages {
+  padding: 24px 18px 12px;
+  max-width: none;
+}
+
+.remotion-preview-pane {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.remotion-preview-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.remotion-preview-meta {
+  font-size: 12.5px;
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.remotion-new-btn {
+  margin-left: auto;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.remotion-new-btn:hover {
+  border-color: var(--orange);
+  background: var(--orange-soft);
+}
+
+.remotion-preview-frame {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow: auto;
+}
+
+.remotion-preview-frame > div {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.remotion-preview-empty {
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
+  max-width: 320px;
+  line-height: 1.6;
+}
+
+.remotion-preview-error {
+  max-width: 480px;
+  padding: 18px 20px;
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-line);
+  border-radius: 14px;
+  color: var(--danger);
+}
+
+.remotion-preview-error strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.remotion-preview-error pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 12.5px;
+  line-height: 1.6;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.applied-badge {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #34d399;
+}
+
+.stop-btn {
+  background: var(--danger) !important;
+}
+
+/* ---- responsive: stack instead of side-by-side ---- */
+@media (max-width: 900px) {
+  .remotion-studio {
+    flex-direction: column;
+  }
+
+  .remotion-chat-pane {
+    width: 100%;
+    height: 45%;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .remotion-preview-pane {
+    flex: 1;
+  }
+
+  .remotion-preview-toolbar {
+    flex-wrap: nowrap;
+    padding: 8px 12px;
+    gap: 8px;
+  }
+
+  /* The "Preview only — export coming soon" badge is the least essential
+     thing in the toolbar on a narrow screen — drop it so the meta + new
+     project button stay on one compact row and the video frame keeps the
+     vertical space instead. */
+  .remotion-preview-toolbar .nav-badge {
+    display: none;
+  }
+
+  .remotion-preview-meta {
+    font-size: 11px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .remotion-new-btn {
+    flex-shrink: 0;
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .remotion-chat-messages {
+    padding: 16px 14px 8px;
+  }
+
+  .remotion-preview-frame {
+    padding: 14px;
+  }
+}
+
+.remotion-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--muted);
+  font-size: 14px;
 }
