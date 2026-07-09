@@ -21,7 +21,7 @@ interface RemotionPreviewProps {
  * statements at all.
  */
 const REMOTION_GLOBALS =
-  'const { AbsoluteFill, Sequence, Series, useCurrentFrame, useVideoConfig, interpolate, spring, Easing, random, Img, staticFile } = Remotion;';
+  'const { AbsoluteFill, Sequence, Series, useCurrentFrame, useVideoConfig, interpolate, spring, Easing, random, Img, Video, Audio, staticFile } = Remotion;';
 
 /** Strips accidental import/export syntax defensively — the model is
  * instructed not to use it, but a stray line here shouldn't hard-crash the

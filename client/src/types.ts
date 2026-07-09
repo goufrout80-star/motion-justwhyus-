@@ -51,15 +51,21 @@ export interface ChatSession {
 // Remotion Studio — chat-driven video composition builder
 // ============================================================
 
+export type RemotionModelId = 'gemini-3.5-flash' | 'gemini-3.1-pro';
+
 export interface RemotionMessage {
   id: string;
   role: 'user' | 'model';
   text: string;
   createdAt?: number;
+  attachments?: AttachmentMeta[];
   /** A proposed composition awaiting the user's yes/no. */
   pendingCode?: string;
   pendingSummary?: string;
   pendingDurationInFrames?: number;
+  pendingFps?: number;
+  pendingWidth?: number;
+  pendingHeight?: number;
   /** True once this message's proposal was accepted and applied. */
   applied?: boolean;
 }
@@ -69,6 +75,8 @@ export interface RemotionProject {
   title: string;
   createdAt: number;
   updatedAt: number;
+  /** Which model this project's chat uses — switchable per project. */
+  model: RemotionModelId;
   /** The currently active, applied composition. Empty until the first
    * proposal is accepted — the preview shows a placeholder until then. */
   code: string;

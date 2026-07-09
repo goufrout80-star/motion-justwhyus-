@@ -29,6 +29,7 @@ function newRemotionProject(): RemotionProject {
     title: '',
     createdAt: now,
     updatedAt: now,
+    model: 'gemini-3.5-flash',
     code: '',
     durationInFrames: 150,
     fps: 30,

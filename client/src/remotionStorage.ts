@@ -7,7 +7,9 @@ export function loadRemotionProjects(): RemotionProject[] {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    // Backfill `model` for projects saved before the model switcher existed.
+    return parsed.map((p) => ({ model: 'gemini-3.5-flash', ...p }));
   } catch {
     return [];
   }

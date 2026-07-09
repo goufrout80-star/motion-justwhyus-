@@ -1,12 +1,29 @@
+import type { Attachment, RemotionModelId } from './types';
+
 export type RemotionChatEvent =
   | { type: 'text'; text: string }
-  | { type: 'code_proposal'; code: string; summary: string; durationInFrames: number }
+  | {
+      type: 'code_proposal';
+      code: string;
+      summary: string;
+      durationInFrames: number;
+      fps: number;
+      width: number;
+      height: number;
+    }
   | { type: 'done' }
   | { type: 'error'; message: string };
 
 export interface RemotionHistoryItem {
   role: 'user' | 'model';
   text: string;
+  /** Only sent for the newest message — older turns are text-only since we
+   * don't keep attachment bytes around after they've already been sent once. */
+  attachments?: Attachment[];
+}
+
+function toWireAttachment(a: Attachment) {
+  return { url: a.url, mimeType: a.mimeType, kind: a.kind };
 }
 
 /**
@@ -16,12 +33,21 @@ export interface RemotionHistoryItem {
  */
 export async function* streamRemotionChat(
   messages: RemotionHistoryItem[],
+  model: RemotionModelId,
   signal?: AbortSignal
 ): AsyncGenerator<RemotionChatEvent> {
+  const wireMessages = messages.map((m) => ({
+    role: m.role,
+    text: m.text,
+    ...(m.attachments && m.attachments.length > 0
+      ? { attachments: m.attachments.map(toWireAttachment) }
+      : {}),
+  }));
+
   const res = await fetch('/api/remotion-chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify({ messages: wireMessages, model }),
     signal,
   });
 

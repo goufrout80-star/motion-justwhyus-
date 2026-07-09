@@ -2656,3 +2656,35 @@ body::before {
   color: var(--muted);
   font-size: 14px;
 }
+
+/* ---- Remotion Studio: model switch ---- */
+.remotion-model-switch {
+  display: flex;
+  gap: 4px;
+  padding: 12px 18px 0;
+  flex-shrink: 0;
+}
+
+.remotion-model-btn {
+  flex: 1;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 7px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.remotion-model-btn:hover {
+  border-color: var(--orange-line);
+  color: var(--text);
+}
+
+.remotion-model-btn.active {
+  background: var(--orange);
+  border-color: var(--orange);
+  color: #fff;
+}
